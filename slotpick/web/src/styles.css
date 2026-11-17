@@ -1,0 +1,21 @@
+:root { --ink:#14213d; --paper:#f7f9fb; --line:#cfd8e3; --go:#0b7a5c; --warn:#b3261e; --card:#fff; }
+@media (prefers-color-scheme: dark) { :root { --ink:#e8eef7; --paper:#0f1722; --line:#2a3a50; --go:#3fc79f; --warn:#ff8a80; --card:#162234; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.5 "Segoe UI", system-ui, sans-serif; }
+.card { max-width:480px; margin:0 auto; padding:24px 20px 40px; }
+h1 { font-size:1.5rem; margin:0 0 4px; }
+.big { font-size:1.4rem; font-weight:600; }
+.hold { font-weight:600; }
+.timer { font-variant-numeric:tabular-nums; font-size:1.25rem; color:var(--go); }
+.timer.urgent { color:var(--warn); }
+.msg { color:var(--warn); }
+.days { display:flex; gap:8px; overflow-x:auto; margin:16px 0; }
+.day, .slot, .confirm { font:inherit; color:inherit; border:1px solid var(--line); background:var(--card); border-radius:10px; cursor:pointer; }
+.day { padding:8px 14px; white-space:nowrap; }
+.day.on, .slot.on { border-color:var(--go); box-shadow:inset 0 0 0 2px var(--go); }
+.slots { list-style:none; padding:0; margin:0 0 20px; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.slot { width:100%; padding:14px 8px; }
+.slot:disabled { opacity:.45; cursor:not-allowed; }
+.confirm { width:100%; padding:14px; background:var(--go); color:#fff; border-color:var(--go); font-weight:600; }
+.confirm:disabled { background:var(--card); color:var(--ink); border-color:var(--line); opacity:.6; cursor:not-allowed; }
+button:focus-visible { outline:3px solid var(--go); outline-offset:2px; }

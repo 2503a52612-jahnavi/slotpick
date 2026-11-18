@@ -4,7 +4,7 @@ const rateLimit = require('express-rate-limit');
 const asyncHandler = require('../utils/asyncHandler');
 const validate = require('../middleware/validate');
 const { requireAuth } = require('../middleware/auth');
-const { registerSchema, loginSchema } = require('../middleware/schemas');
+const { registerSchema, loginSchema, changePasswordSchema } = require('../middleware/schemas');
 const authController = require('../controllers/authController');
 
 const router = express.Router();
@@ -33,5 +33,11 @@ router.post(
 );
 
 router.get('/me', requireAuth, authController.me);
+router.post(
+  '/password',
+  requireAuth,
+  validate(changePasswordSchema),
+  asyncHandler(authController.changePassword)
+);
 
 module.exports = router;

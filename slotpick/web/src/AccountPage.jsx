@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   bookCustomerSlot,
+  changePassword,
   getAdminStatus,
   getAgentDeliveries,
   getCustomerDeliveries,
@@ -32,7 +33,7 @@ function formatDay(date) {
   });
 }
 
-export default function AccountPage({ user, token, onLogout }) {
+export default function AccountPage({ user, token, onLogout, onAuthenticated }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deliveries, setDeliveries] = useState([]);
@@ -41,6 +42,9 @@ export default function AccountPage({ user, token, onLogout }) {
   const [bookingErrors, setBookingErrors] = useState({});
   const [refreshError, setRefreshError] = useState('');
   const [retryCount, setRetryCount] = useState(0);
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -122,6 +126,32 @@ export default function AccountPage({ user, token, onLogout }) {
     }
   }
 
+  async function updatePassword(event) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    setPasswordBusy(true);
+    setPasswordError('');
+    setPasswordMessage('');
+    try {
+      const result = await changePassword(token, {
+        currentPassword: String(form.get('currentPassword')),
+        newPassword: String(form.get('newPassword')),
+      });
+      formElement.reset();
+      setPasswordMessage(result.message);
+      onAuthenticated({ token: result.token, user });
+    } catch (requestError) {
+      if (requestError.status === 401) {
+        onLogout();
+        return;
+      }
+      setPasswordError(requestError.message);
+    } finally {
+      setPasswordBusy(false);
+    }
+  }
+
   return (
     <main className="card account-card">
       <header className="account-header">
@@ -132,6 +162,22 @@ export default function AccountPage({ user, token, onLogout }) {
         </div>
         <button className="secondary-button" type="button" onClick={onLogout}>Sign out</button>
       </header>
+
+      <section className="account-security">
+        <h2>Change password</h2>
+        <p className="muted">Use at least 12 characters. Changing it signs out your other sessions.</p>
+        <form className="form" onSubmit={updatePassword}>
+          <label htmlFor="current-password">Current password</label>
+          <input id="current-password" name="currentPassword" type="password" autoComplete="current-password" maxLength="72" required />
+          <label htmlFor="new-password">New password</label>
+          <input id="new-password" name="newPassword" type="password" autoComplete="new-password" minLength="12" maxLength="72" required />
+          {passwordError && <p className="msg" role="alert">{passwordError}</p>}
+          {passwordMessage && <p className="success-msg" role="status">{passwordMessage}</p>}
+          <button className="secondary-button" type="submit" disabled={passwordBusy}>
+            {passwordBusy ? 'Updating…' : 'Update password'}
+          </button>
+        </form>
+      </section>
 
       {loading && <p role="status">Loading your account…</p>}
       {error && (

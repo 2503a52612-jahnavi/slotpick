@@ -18,6 +18,9 @@ const requireAuth = asyncHandler(async (req, res, next) => {
 
   const user = await User.findById(payload.sub);
   if (!user || !user.active) throw new HttpError(401, 'Account not found or disabled');
+  if (payload.tokenVersion !== (user.tokenVersion || 0)) {
+    throw new HttpError(401, 'Session expired. Please sign in again.');
+  }
 
   req.user = user;
   next();

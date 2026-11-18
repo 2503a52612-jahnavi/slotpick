@@ -27,6 +27,11 @@ const loginSchema = z.object({
   password: z.string().min(1).max(72),
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(72),
+  newPassword: z.string().min(12, 'New password must be at least 12 characters').max(72),
+});
+
 const agentSchema = z.object({
   name: z.string().trim().min(2).max(80),
   email: z.string().trim().toLowerCase().email().max(254),
@@ -82,6 +87,7 @@ const deliveryStatusSchema = z.object({
 module.exports = {
   registerSchema,
   loginSchema,
+  changePasswordSchema,
   agentSchema,
   createDeliverySchema,
   bookSlotSchema,

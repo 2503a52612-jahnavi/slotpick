@@ -81,6 +81,7 @@ Set the API base URL with `REACT_APP_API_URL` (web) or `EXPO_PUBLIC_API_URL`
 - `POST /api/deliveries/:token/slot` with `{ "slotId": "..." }` books the slot, returning `{ slotId, date, start, end }`.
 - `GET /api/customer/deliveries` requires a customer login and returns only deliveries linked to that account.
 - `POST /api/customer/deliveries/:deliveryId/slot` requires the owning customer login to book a slot.
+- `POST /api/auth/password` requires the current password and updates the signed-in account password; other existing sessions are invalidated.
 - New deliveries must include a supported `platform` and may be linked to a customer account.
 - Invalid links return 404, expired selection windows return 410, and a slot that is no longer available returns 409.
 

@@ -163,6 +163,7 @@ export default function App() {
       user={session.user}
       token={session.token}
       onLogout={handleLogout}
+      onAuthenticated={handleAuthenticated}
     />
   );
 }

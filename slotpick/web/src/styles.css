@@ -9,6 +9,7 @@ h1 { font-size:1.5rem; margin:0 0 4px; }
 .timer { font-variant-numeric:tabular-nums; font-size:1.25rem; color:var(--go); }
 .timer.urgent { color:var(--warn); }
 .msg { color:var(--warn); }
+.success-msg { color:var(--go); }
 .days { display:flex; gap:8px; overflow-x:auto; margin:16px 0; }
 .day, .slot, .confirm { font:inherit; color:inherit; border:1px solid var(--line); background:var(--card); border-radius:10px; cursor:pointer; }
 .day { padding:8px 14px; white-space:nowrap; }
@@ -30,6 +31,9 @@ button:focus-visible { outline:3px solid var(--go); outline-offset:2px; }
 .text-button { padding:4px 0; border:0; color:var(--go); background:transparent; font:inherit; font-weight:600; text-decoration:underline; cursor:pointer; }
 .secondary-button { padding:8px 12px; color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:8px; font:inherit; cursor:pointer; }
 .account-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:28px; }
+.account-security { margin:0 0 28px; padding:16px; border:1px solid var(--line); border-radius:10px; background:var(--card); }
+.account-security .form { max-width:420px; margin-top:16px; }
+.account-security .secondary-button:disabled { opacity:.6; cursor:wait; }
 .account-card h2 { font-size:1.15rem; }
 .delivery-list { display:grid; gap:12px; padding:0; list-style:none; }
 .delivery-list li { display:grid; gap:4px; padding:14px; background:var(--card); border:1px solid var(--line); border-radius:10px; }

@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone: { type: String, trim: true },
     passwordHash: { type: String, required: true, select: false },
+    tokenVersion: { type: Number, default: 0 },
     role: { type: String, enum: ROLES, default: 'customer', index: true },
     active: { type: Boolean, default: true },
   },

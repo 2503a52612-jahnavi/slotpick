@@ -47,6 +47,13 @@ export const register = (details) =>
 export const login = (credentials) =>
   request('/api/auth/login', { method: 'POST', body: JSON.stringify(credentials) });
 
+export const changePassword = (token, passwords) =>
+  request('/api/auth/password', {
+    method: 'POST',
+    token,
+    body: JSON.stringify(passwords),
+  });
+
 export const getMe = (token) => request('/api/auth/me', { token });
 export const getCustomerDeliveries = (token) => request('/api/customer/deliveries', { token });
 export const bookCustomerSlot = (token, deliveryId, slotId) =>

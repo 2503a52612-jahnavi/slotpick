@@ -131,9 +131,9 @@ Test sign-in credentials for the seeded customer and agent:
 
 These are development-only credentials. Each reseed restores these passwords;
 override them with `DEMO_CUSTOMER_EMAIL`, `DEMO_CUSTOMER_PASSWORD`,
-`DEMO_AGENT_EMAIL`, and `DEMO_AGENT_PASSWORD` when appropriate. Order lookup
-is public; for example, `POST /api/deliveries/lookup` with
-`{ "platform": "Amazon", "orderId": "ID_101" }`.
+`DEMO_AGENT_EMAIL`, and `DEMO_AGENT_PASSWORD` when appropriate. Sign in with
+the demo customer account to view its deliveries; platform and order ID alone
+do not grant access.
 🚚 Delivery Workflow
 Plain Text
 Admin Creates Delivery

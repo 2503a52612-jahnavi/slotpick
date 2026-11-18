@@ -5,7 +5,6 @@ import AccountPage from './AccountPage';
 import AuthPage from './AuthPage';
 import DeliveryPage from './DeliveryPage';
 import LandingPage from './LandingPage';
-import OrderLookupPage from './OrderLookupPage';
 
 const TOKEN_KEY = 'slotpick.jwt';
 
@@ -17,7 +16,6 @@ function getRoute() {
 
   const deliveryMatch = hashPath.match(/^\/d\/([\w-]+)$/);
   if (deliveryMatch) return { type: 'delivery', token: deliveryMatch[1] };
-  if (hashPath === '/lookup') return { type: 'lookup' };
   if (hashPath === '/login' || hashPath === '/register') {
     return { type: 'auth', mode: hashPath.slice(1) };
   }
@@ -101,10 +99,6 @@ export default function App() {
 
   if (route.type === 'home') {
     return <LandingPage onNavigate={navigate} />;
-  }
-
-  if (route.type === 'lookup') {
-    return <OrderLookupPage onNavigate={navigate} />;
   }
 
   if (session.loading) {

@@ -75,15 +75,6 @@ const bookSlotSchema = z.object({
   slotId: objectId,
 });
 
-const orderLookupSchema = z.object({
-  platform,
-  orderId: z.string().trim().min(1).max(80),
-});
-
-const orderBookingSchema = orderLookupSchema.extend({
-  slotId: objectId,
-});
-
 const deliveryStatusSchema = z.object({
   status: z.enum(['scheduled', 'out-for-delivery', 'delivered']),
 });
@@ -94,7 +85,5 @@ module.exports = {
   agentSchema,
   createDeliverySchema,
   bookSlotSchema,
-  orderLookupSchema,
-  orderBookingSchema,
   deliveryStatusSchema,
 };

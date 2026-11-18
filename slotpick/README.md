@@ -30,8 +30,10 @@ data is used.
 Open `http://localhost:3000/#/register` to create a customer account, then
 `http://localhost:3000/#/login` to sign in. The session token is stored in
 browser local storage and verified through `/api/auth/me` after refresh.
-The root URL opens the landing page. **Get Started** opens the order lookup;
-`#/account` opens the role-specific account view for signed-in users.
+The root URL opens the landing page. **Get Started** opens the role-specific
+account view for signed-in users and prompts others to sign in. Customers can
+only see deliveries linked to their authenticated account. A private delivery
+link (`#/d/<delivery-token>`) remains available for customers who receive one.
 The customer view loads delivery history from `/api/customer/deliveries` and
 shows live slot availability. Selecting a slot books it through the
 authenticated customer delivery endpoint and refreshes the history. The
@@ -68,19 +70,18 @@ Default development sign-in credentials:
 - Agent: `demo-agent@slotpick.example` / `DemoAgent123!`
 
 Set `DEMO_CUSTOMER_EMAIL`, `DEMO_CUSTOMER_PASSWORD`, `DEMO_AGENT_EMAIL`, or
-`DEMO_AGENT_PASSWORD` before seeding to override these values. Order lookup
-does not require authentication. For example, send
-`POST /api/deliveries/lookup` with
-`{ "platform": "Amazon", "orderId": "ID_101" }`.
+`DEMO_AGENT_PASSWORD` before seeding to override these values. Sign in with the
+demo customer account to view its deliveries; platform and order ID alone do
+not grant access.
 
 Set the API base URL with `REACT_APP_API_URL` (web) or `EXPO_PUBLIC_API_URL`
 (mobile). The delivery-selection API contract is:
 
 - `GET /api/deliveries/:token` returns `{ orderId, address, selectionExpiresAt, slots:[{id,date,start,end,available}] }`.
 - `POST /api/deliveries/:token/slot` with `{ "slotId": "..." }` books the slot, returning `{ slotId, date, start, end }`.
-- `POST /api/deliveries/lookup` with `{ "platform": "Amazon", "orderId": "ORD-1001" }` returns the matching MongoDB delivery status and slots without exposing its address or delivery token.
-- `POST /api/deliveries/lookup/slot` with `{ "platform": "Amazon", "orderId": "ORD-1001", "slotId": "<slot-id>" }` books an available slot.
-- New deliveries must include a supported `platform`; existing MongoDB deliveries need their platform set before they can be found through order lookup.
+- `GET /api/customer/deliveries` requires a customer login and returns only deliveries linked to that account.
+- `POST /api/customer/deliveries/:deliveryId/slot` requires the owning customer login to book a slot.
+- New deliveries must include a supported `platform` and may be linked to a customer account.
 - Invalid links return 404, expired selection windows return 410, and a slot that is no longer available returns 409.
 
 ### Delivery agent status API

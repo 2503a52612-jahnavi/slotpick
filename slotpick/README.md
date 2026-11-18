@@ -53,12 +53,25 @@ and the admin credentials, then run `npm install` and `npm start` from that
 directory. The configured admin is created on first startup and is not reset
 on later starts.
 
-To add development delivery data for the customer `jahnavi@test.com`, run
-`npm run seed-demo` from `apps/api`. This creates or reuses a demo agent, adds
-three available slots, and links a pending demo delivery to the customer. It
-refuses to run when `NODE_ENV=production`. Set `DEMO_AGENT_EMAIL` and
-`DEMO_AGENT_PASSWORD` before running if you want to use the demo agent for
-sign-in; otherwise its password is generated randomly.
+To seed development data, run `npm run seed-demo` from `apps/api`. This creates
+or reuses the demo customer and agent, creates five lookup orders
+(`Amazon/ID_101`, `Flipkart/ID_102`, `Myntra/ID_103`, `Ajio/ID_104`, and
+`Meesho/ID_105`), and attaches three available delivery slots to each order.
+The seed is repeatable and refuses to run when `NODE_ENV=production`. Each run
+sets the passwords for these dedicated demo accounts; use a different email
+with the corresponding environment variable if that account already belongs
+to someone else.
+
+Default development sign-in credentials:
+
+- Customer: `demo-customer@slotpick.example` / `DemoCustomer123!`
+- Agent: `demo-agent@slotpick.example` / `DemoAgent123!`
+
+Set `DEMO_CUSTOMER_EMAIL`, `DEMO_CUSTOMER_PASSWORD`, `DEMO_AGENT_EMAIL`, or
+`DEMO_AGENT_PASSWORD` before seeding to override these values. Order lookup
+does not require authentication. For example, send
+`POST /api/deliveries/lookup` with
+`{ "platform": "Amazon", "orderId": "ID_101" }`.
 
 Set the API base URL with `REACT_APP_API_URL` (web) or `EXPO_PUBLIC_API_URL`
 (mobile). The delivery-selection API contract is:

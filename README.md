@@ -103,6 +103,37 @@ HTTP
 GET /api/admin/ping
 POST /api/admin/agents
 POST /api/admin/deliveries
+
+### Development order lookup data
+
+From `apps/api`, configure `MONGODB_URI` in `.env`, then seed or reseed the
+demo records with:
+
+```powershell
+npm run seed-demo
+```
+
+The script is development-only and refuses to run with `NODE_ENV=production`.
+It creates five orders, each with three delivery slots:
+
+| Platform | Order ID |
+| --- | --- |
+| Amazon | `ID_101` |
+| Flipkart | `ID_102` |
+| Myntra | `ID_103` |
+| Ajio | `ID_104` |
+| Meesho | `ID_105` |
+
+Test sign-in credentials for the seeded customer and agent:
+
+- Customer: `demo-customer@slotpick.example` / `DemoCustomer123!`
+- Agent: `demo-agent@slotpick.example` / `DemoAgent123!`
+
+These are development-only credentials. Each reseed restores these passwords;
+override them with `DEMO_CUSTOMER_EMAIL`, `DEMO_CUSTOMER_PASSWORD`,
+`DEMO_AGENT_EMAIL`, and `DEMO_AGENT_PASSWORD` when appropriate. Order lookup
+is public; for example, `POST /api/deliveries/lookup` with
+`{ "platform": "Amazon", "orderId": "ID_101" }`.
 🚚 Delivery Workflow
 Plain Text
 Admin Creates Delivery

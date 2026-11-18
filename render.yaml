@@ -3,7 +3,7 @@ services:
     name: slotpick-api
     runtime: node
     rootDir: apps/api
-    buildCommand: npm ci
+    buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
     envVars:

@@ -10,7 +10,14 @@ const deliverySchema = new mongoose.Schema(
     selectionExpiresAt: { type: Date, required: true, index: true },
     status: {
       type: String,
-      enum: ['pending', 'scheduled', 'completed', 'cancelled'],
+      enum: [
+        'pending',
+        'scheduled',
+        'out-for-delivery',
+        'delivered',
+        'completed',
+        'cancelled',
+      ],
       default: 'pending',
       index: true,
     },

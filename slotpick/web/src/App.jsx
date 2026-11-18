@@ -1,87 +1,168 @@
-import { useEffect, useState, useCallback } from 'react';
-import { getDelivery, confirmSlot } from './api';
-import Countdown from './Countdown';
+import { useCallback, useEffect, useState } from 'react';
+import { getMe } from './api';
+import AgentDashboard from './AgentDashboard';
+import AccountPage from './AccountPage';
+import AuthPage from './AuthPage';
+import DeliveryPage from './DeliveryPage';
+import LandingPage from './LandingPage';
 
-const token = () => (window.location.hash.match(/\/d\/([\w-]+)/) || [])[1];
-const fmtDay = (d) => new Date(d + 'T00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+const TOKEN_KEY = 'slotpick.jwt';
+
+function getRoute() {
+  const hashPath = window.location.hash.replace(/^#/, '');
+  if (!hashPath) {
+    return window.location.pathname === '/' ? { type: 'home' } : { type: 'redirect' };
+  }
+
+  const deliveryMatch = hashPath.match(/^\/d\/([\w-]+)$/);
+  if (deliveryMatch) return { type: 'delivery', token: deliveryMatch[1] };
+  if (hashPath === '/login' || hashPath === '/register') {
+    return { type: 'auth', mode: hashPath.slice(1) };
+  }
+  if (hashPath === '/account') return { type: 'account' };
+  if (hashPath === '/') return { type: 'home' };
+  return { type: 'redirect' };
+}
+
+function navigate(path) {
+  window.location.hash = path;
+}
 
 export default function App() {
-  const [data, setData] = useState(null);
-  const [state, setState] = useState('loading'); // loading | pick | saving | done | expired | error
-  const [selected, setSelected] = useState(null);
-  const [activeDay, setActiveDay] = useState(null);
-  const [message, setMessage] = useState('');
-  const t = token() || 'demo';
+  const [route, setRoute] = useState(getRoute);
+  const [session, setSession] = useState({ loading: true, token: null, user: null });
+  const [sessionError, setSessionError] = useState('');
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
 
-  const load = useCallback(() => {
-    setState('loading');
-    getDelivery(t)
-      .then((d) => {
-        setData(d);
-        if (d.status === 'scheduled' && d.selectedSlot) {
-          setSelected(d.selectedSlot);
-          setState('done');
-        } else {
-          setActiveDay(d.slots[0]?.date);
-          setState('pick');
-        }
-      })
-      .catch((e) => setState(e.status === 410 ? 'expired' : 'error'));
-  }, [t]);
-  useEffect(load, [load]);
+  useEffect(() => {
+    const handleHashChange = () => setRoute(getRoute());
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
-  const submit = async () => {
-    setState('saving');
-    try {
-      const res = await confirmSlot(t, selected.id);
-      setSelected(res);
-      setState('done');
-    } catch (e) {
-      if (e.status === 410) return setState('expired');
-      if (e.status === 409) { setMessage('Someone just took that slot. Pick another.'); setSelected(null); return load(); }
-      setMessage('Could not save your slot. Check your connection and try again.');
-      setState('pick');
+  useEffect(() => {
+    if (route.type !== 'redirect') return;
+    if (window.location.pathname !== '/') {
+      window.location.replace('/#/login');
+    } else {
+      navigate('/login');
     }
-  };
+  }, [route]);
 
-  if (state === 'loading') return <main className="card"><p>Loading your delivery…</p></main>;
-  if (state === 'error') return <main className="card"><h1>We can’t find this delivery</h1><p>Check the link in your message and try again.</p></main>;
-  if (state === 'expired') return <main className="card"><h1>Time ran out</h1><p>We’ll deliver in the next available slot and message you the time.</p></main>;
-  if (state === 'done') return (
-    <main className="card">
-      <h1>Delivery booked</h1>
-      <p className="big">{fmtDay(selected.date)}, {selected.start}–{selected.end}</p>
-      <p>Order {data.orderId} will arrive at {data.address}.</p>
-    </main>
-  );
+  useEffect(() => {
+    let active = true;
+    const token = window.localStorage.getItem(TOKEN_KEY);
 
-  const days = [...new Set(data.slots.map((s) => s.date))];
-  const slots = data.slots.filter((s) => s.date === activeDay);
+    if (!token) {
+      setSession({ loading: false, token: null, user: null });
+      return () => {
+        active = false;
+      };
+    }
+
+    getMe(token)
+      .then(({ user }) => {
+        if (active) setSession({ loading: false, token, user });
+      })
+      .catch((error) => {
+        if (!active) return;
+        if (error.status === 401) {
+          window.localStorage.removeItem(TOKEN_KEY);
+          setSession({ loading: false, token: null, user: null });
+        } else {
+          setSession({ loading: false, token, user: null });
+          setSessionError(error.message);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [restoreAttempt]);
+
+  const handleAuthenticated = useCallback(({ token, user }) => {
+    window.localStorage.setItem(TOKEN_KEY, token);
+    setSession({ loading: false, token, user });
+    navigate('/account');
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    window.localStorage.removeItem(TOKEN_KEY);
+    setSessionError('');
+    setSession({ loading: false, token: null, user: null });
+    navigate('/login');
+  }, []);
+
+  if (route.type === 'delivery') {
+    return <DeliveryPage key={route.token} deliveryToken={route.token} />;
+  }
+
+  if (route.type === 'home') {
+    return <LandingPage onNavigate={navigate} />;
+  }
+
+  if (session.loading) {
+    return <main className="card" role="status">Restoring your session…</main>;
+  }
+
+  if (sessionError) {
+    return (
+      <main className="card">
+        <h1>Couldn’t restore your session</h1>
+        <p className="msg" role="alert">{sessionError}</p>
+        <button
+          className="confirm"
+          type="button"
+          onClick={() => {
+            setSessionError('');
+            setSession({ loading: true, token: null, user: null });
+            setRestoreAttempt((attempt) => attempt + 1);
+          }}
+        >
+          Try again
+        </button>
+        <button className="text-button" type="button" onClick={handleLogout}>Go to sign in</button>
+      </main>
+    );
+  }
+
+  if (route.type === 'auth' && !session.user) {
+    return (
+      <AuthPage
+        key={route.mode}
+        mode={route.mode}
+        onAuthenticated={handleAuthenticated}
+        onNavigate={navigate}
+      />
+    );
+  }
+
+  if (!session.user || !session.token) {
+    return (
+      <AuthPage
+        key="login"
+        mode="login"
+        onAuthenticated={handleAuthenticated}
+        onNavigate={navigate}
+      />
+    );
+  }
+
+  if (session.user.role === 'agent') {
+    return (
+      <AgentDashboard
+        user={session.user}
+        token={session.token}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
   return (
-    <main className="card">
-      <header>
-        <h1>Pick your delivery time</h1>
-        <p>Order {data.orderId} · {data.address}</p>
-        <p className="hold">Slot held for <Countdown expiresAt={data.selectionExpiresAt} onExpire={() => setState('expired')} /></p>
-      </header>
-      {message && <p className="msg" role="alert">{message}</p>}
-      <div className="days" role="tablist">
-        {days.map((d) => (
-          <button key={d} role="tab" aria-selected={d === activeDay} className={d === activeDay ? 'day on' : 'day'} onClick={() => setActiveDay(d)}>{fmtDay(d)}</button>
-        ))}
-      </div>
-      <ul className="slots">
-        {slots.map((s) => (
-          <li key={s.id}>
-            <button disabled={!s.available} aria-pressed={selected?.id === s.id} className={selected?.id === s.id ? 'slot on' : 'slot'} onClick={() => setSelected(s)}>
-              {s.start}–{s.end}{!s.available && <small> Full</small>}
-            </button>
-          </li>
-        ))}
-      </ul>
-      <button className="confirm" disabled={!selected || state === 'saving'} onClick={submit}>
-        {state === 'saving' ? 'Booking…' : selected ? `Book ${selected.start}–${selected.end}` : 'Choose a slot'}
-      </button>
-    </main>
+    <AccountPage
+      user={session.user}
+      token={session.token}
+      onLogout={handleLogout}
+    />
   );
 }

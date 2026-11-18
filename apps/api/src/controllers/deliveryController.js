@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const Delivery = require('../models/Delivery');
 const DeliverySlot = require('../models/DeliverySlot');
 const User = require('../models/User');
+const { canTransitionDelivery } = require('../utils/deliveryStatus');
 const HttpError = require('../utils/httpError');
 
 function hashToken(token) {
@@ -53,7 +54,45 @@ async function bookSlot(req, res) {
   if (existing.status !== 'pending') {
     throw new HttpError(409, 'This delivery has already been scheduled');
   }
-  if (!existing.slots.some((slotId) => String(slotId) === req.body.slotId)) {
+  const slot = await reserveDeliverySlot(existing, req.body.slotId, now);
+
+  res.json({
+    slotId: String(slot._id),
+    date: slot.date,
+    start: slot.start,
+    end: slot.end,
+  });
+}
+
+async function bookCustomerSlot(req, res) {
+  const deliveryId = req.params.deliveryId;
+  if (!/^[a-f\d]{24}$/i.test(deliveryId)) throw new HttpError(404, 'Delivery not found');
+
+  const delivery = await Delivery.findOne({
+    _id: deliveryId,
+    customer: req.user._id,
+  });
+  if (!delivery) throw new HttpError(404, 'Delivery not found');
+
+  const now = new Date();
+  if (delivery.selectionExpiresAt <= now) {
+    throw new HttpError(410, 'Delivery selection window has expired');
+  }
+  if (delivery.status !== 'pending') {
+    throw new HttpError(409, 'This delivery has already been scheduled');
+  }
+
+  const slot = await reserveDeliverySlot(delivery, req.body.slotId, now, req.user._id);
+  res.json({
+    slotId: String(slot._id),
+    date: slot.date,
+    start: slot.start,
+    end: slot.end,
+  });
+}
+
+async function reserveDeliverySlot(delivery, slotId, now, customerId) {
+  if (!delivery.slots.some((deliverySlotId) => String(deliverySlotId) === slotId)) {
     throw new HttpError(409, 'This slot is not available for the delivery');
   }
 
@@ -63,7 +102,7 @@ async function bookSlot(req, res) {
     await session.withTransaction(async () => {
       slot = await DeliverySlot.findOneAndUpdate(
         {
-          _id: req.body.slotId,
+          _id: slotId,
           active: true,
           $expr: { $lt: ['$bookedCount', '$capacity'] },
         },
@@ -72,27 +111,25 @@ async function bookSlot(req, res) {
       );
       if (!slot) throw new HttpError(409, 'This slot is no longer available');
 
-      const delivery = await Delivery.findOneAndUpdate(
-        {
-          _id: existing._id,
-          status: 'pending',
-          selectionExpiresAt: { $gt: now },
-        },
+      const deliveryFilter = {
+        _id: delivery._id,
+        status: 'pending',
+        selectionExpiresAt: { $gt: now },
+      };
+      if (customerId) deliveryFilter.customer = customerId;
+
+      const updated = await Delivery.findOneAndUpdate(
+        deliveryFilter,
         { $set: { status: 'scheduled', selectedSlotId: slot._id } },
         { new: true, session }
       );
-      if (!delivery) throw new HttpError(409, 'This delivery has already been scheduled');
+      if (!updated) throw new HttpError(409, 'This delivery has already been scheduled');
     });
   } finally {
     await session.endSession();
   }
 
-  res.json({
-    slotId: String(slot._id),
-    date: slot.date,
-    start: slot.start,
-    end: slot.end,
-  });
+  return slot;
 }
 
 async function createDelivery(req, res) {
@@ -158,6 +195,44 @@ async function listAssignedDeliveries(req, res) {
   res.json({ deliveries });
 }
 
+async function updateAssignedDeliveryStatus(req, res) {
+  const deliveryId = req.params.deliveryId;
+  if (!/^[a-f\d]{24}$/i.test(deliveryId)) throw new HttpError(404, 'Delivery not found');
+
+  const delivery = await Delivery.findOne({
+    _id: deliveryId,
+    assignedAgent: req.user._id,
+  }).populate('slots selectedSlotId');
+  if (!delivery) throw new HttpError(404, 'Delivery not found');
+
+  const nextStatus = req.body.status;
+  if (
+    !canTransitionDelivery(
+      delivery.status,
+      nextStatus,
+      Boolean(delivery.selectedSlotId)
+    )
+  ) {
+    throw new HttpError(409, `Cannot change delivery status from ${delivery.status} to ${nextStatus}`);
+  }
+  if (delivery.status === nextStatus) {
+    return res.json({ delivery });
+  }
+
+  const updated = await Delivery.findOneAndUpdate(
+    {
+      _id: delivery._id,
+      assignedAgent: req.user._id,
+      status: delivery.status,
+    },
+    { $set: { status: nextStatus } },
+    { returnDocument: 'after' }
+  ).populate('slots selectedSlotId');
+  if (!updated) throw new HttpError(409, 'Delivery status was updated by another request');
+
+  res.json({ delivery: updated });
+}
+
 async function listCustomerDeliveries(req, res) {
   const deliveries = await Delivery.find({ customer: req.user._id })
     .select('orderId address status selectionExpiresAt selectedSlotId slots createdAt')
@@ -169,7 +244,9 @@ async function listCustomerDeliveries(req, res) {
 module.exports = {
   getDelivery,
   bookSlot,
+  bookCustomerSlot,
   createDelivery,
   listAssignedDeliveries,
+  updateAssignedDeliveryStatus,
   listCustomerDeliveries,
 };

@@ -6,6 +6,7 @@ const {
   loginSchema,
   createDeliverySchema,
   bookSlotSchema,
+  deliveryStatusSchema,
 } = require('../src/middleware/schemas');
 
 test('public registration normalizes email and cannot choose a privileged role', () => {
@@ -65,4 +66,6 @@ test('duplicate slots and malformed booking ids are rejected', () => {
 
   assert.equal(duplicated.success, false);
   assert.equal(bookSlotSchema.safeParse({ slotId: 'not-an-object-id' }).success, false);
+  assert.equal(deliveryStatusSchema.safeParse({ status: 'out-for-delivery' }).success, true);
+  assert.equal(deliveryStatusSchema.safeParse({ status: 'skip-to-delivered' }).success, false);
 });

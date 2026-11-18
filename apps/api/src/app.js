@@ -10,9 +10,14 @@ const customerRoutes = require('./routes/customer');
 const deliveryRoutes = require('./routes/deliveries');
 
 const app = express();
+const corsOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 app.use(helmet());
-app.use(cors()); // we'll restrict this to your real website addresses at deployment
+if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
+app.use(cors(corsOrigins.length ? { origin: corsOrigins } : {}));
 app.use(express.json({ limit: '100kb' }));
 
 app.get('/health', (req, res) => {

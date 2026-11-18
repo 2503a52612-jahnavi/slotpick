@@ -73,10 +73,15 @@ const bookSlotSchema = z.object({
   slotId: objectId,
 });
 
+const deliveryStatusSchema = z.object({
+  status: z.enum(['scheduled', 'out-for-delivery', 'delivered']),
+});
+
 module.exports = {
   registerSchema,
   loginSchema,
   agentSchema,
   createDeliverySchema,
   bookSlotSchema,
+  deliveryStatusSchema,
 };

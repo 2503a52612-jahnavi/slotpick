@@ -1,0 +1,220 @@
+import { useEffect, useState } from 'react';
+import {
+  bookCustomerSlot,
+  getAdminStatus,
+  getAgentDeliveries,
+  getCustomerDeliveries,
+} from './api';
+
+const STATUS_LABELS = {
+  pending: 'Pending',
+  scheduled: 'Scheduled',
+  'out-for-delivery': 'Out for delivery',
+  delivered: 'Delivered',
+  completed: 'Delivered',
+  cancelled: 'Cancelled',
+};
+
+function roleName(role) {
+  if (role === 'agent') return 'Delivery Agent';
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function statusLabel(status) {
+  return STATUS_LABELS[status] || status.replace(/-/g, ' ');
+}
+
+function formatDay(date) {
+  return new Date(`${date}T00:00`).toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
+export default function AccountPage({ user, token, onLogout }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [deliveries, setDeliveries] = useState([]);
+  const [adminMessage, setAdminMessage] = useState('');
+  const [bookingId, setBookingId] = useState(null);
+  const [bookingErrors, setBookingErrors] = useState({});
+  const [refreshError, setRefreshError] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    let requestPending = false;
+
+    async function loadAccountData(showLoading) {
+      if (requestPending) return;
+      requestPending = true;
+      if (showLoading) {
+        setLoading(true);
+        setError('');
+      }
+      try {
+        if (user.role === 'customer') {
+          const result = await getCustomerDeliveries(token);
+          if (active) {
+            setDeliveries(result.deliveries);
+            setRefreshError('');
+          }
+        } else if (user.role === 'agent') {
+          const result = await getAgentDeliveries(token);
+          if (active) setDeliveries(result.deliveries);
+        } else if (user.role === 'admin') {
+          const result = await getAdminStatus(token);
+          if (active) setAdminMessage(result.message);
+        }
+      } catch (requestError) {
+        if (!active) return;
+        if (requestError.status === 401) onLogout();
+        else if (showLoading) setError(requestError.message);
+        else setRefreshError(requestError.message);
+      } finally {
+        requestPending = false;
+        if (active && showLoading) setLoading(false);
+      }
+    }
+
+    loadAccountData(true);
+    const refreshTimer = user.role === 'customer'
+      ? window.setInterval(() => loadAccountData(false), 15000)
+      : null;
+    return () => {
+      active = false;
+      if (refreshTimer) window.clearInterval(refreshTimer);
+    };
+  }, [onLogout, retryCount, token, user.role]);
+
+  async function selectSlot(delivery, slot) {
+    setBookingId(delivery._id);
+    setBookingErrors((current) => ({ ...current, [delivery._id]: '' }));
+    try {
+      await bookCustomerSlot(token, delivery._id, slot._id);
+      const result = await getCustomerDeliveries(token);
+      setDeliveries(result.deliveries);
+    } catch (requestError) {
+      if (requestError.status === 401) {
+        onLogout();
+        return;
+      }
+
+      const message = requestError.status === 409
+        ? 'That slot is no longer available. Refreshing the available times…'
+        : requestError.status === 410
+          ? 'The slot selection window has expired.'
+          : requestError.message;
+      setBookingErrors((current) => ({ ...current, [delivery._id]: message }));
+
+      if (requestError.status === 409) {
+        try {
+          const result = await getCustomerDeliveries(token);
+          setDeliveries(result.deliveries);
+        } catch (refreshError) {
+          if (refreshError.status === 401) onLogout();
+          else setBookingErrors((current) => ({ ...current, [delivery._id]: refreshError.message }));
+        }
+      }
+    } finally {
+      setBookingId(null);
+    }
+  }
+
+  return (
+    <main className="card account-card">
+      <header className="account-header">
+        <div>
+          <h1>Your account</h1>
+          <p className="muted">{user.name} · {roleName(user.role)}</p>
+          <p>{user.email}</p>
+        </div>
+        <button className="secondary-button" type="button" onClick={onLogout}>Sign out</button>
+      </header>
+
+      {loading && <p role="status">Loading your account…</p>}
+      {error && (
+        <div>
+          <p className="msg" role="alert">{error}</p>
+          <button className="secondary-button" type="button" onClick={() => setRetryCount((count) => count + 1)}>
+            Try again
+          </button>
+        </div>
+      )}
+      {!loading && !error && user.role === 'admin' && <p>{adminMessage}</p>}
+      {!loading && !error && user.role !== 'admin' && (
+        <section>
+          <h2>{user.role === 'agent' ? 'Assigned deliveries' : 'Delivery history'}</h2>
+          {user.role === 'customer' && (
+            <p className="muted">Delivery statuses refresh automatically every 15 seconds.</p>
+          )}
+          {refreshError && <p className="msg" role="status">Could not refresh delivery status: {refreshError}</p>}
+          {deliveries.length === 0 ? (
+            <p className="muted">No deliveries are linked to this account yet.</p>
+          ) : (
+            <ul className="delivery-list">
+              {deliveries.map((delivery) => {
+                const status = String(delivery.status || '').toLowerCase();
+                const statusClass = status.replace(/[^a-z0-9-]/g, '-');
+                const slots = (delivery.slots || []).filter(
+                  (slot) => slot.active && slot.bookedCount < slot.capacity
+                );
+                const selectionOpen =
+                  status === 'pending' &&
+                  new Date(delivery.selectionExpiresAt).getTime() > Date.now();
+
+                return (
+                  <li key={delivery._id}>
+                    <div className="delivery-summary">
+                      <strong>{delivery.orderId}</strong>
+                      <span className={`status-label status-${statusClass}`}>
+                        {statusLabel(status)}
+                      </span>
+                    </div>
+                    <span>{delivery.address}</span>
+                    {delivery.selectedSlotId && (
+                      <span>
+                        {formatDay(delivery.selectedSlotId.date)} · {delivery.selectedSlotId.start}–{delivery.selectedSlotId.end}
+                      </span>
+                    )}
+
+                    {user.role === 'customer' && status === 'pending' && (
+                      <div className="available-slots">
+                        <strong>Available delivery slots</strong>
+                        {bookingErrors[delivery._id] && (
+                          <p className="msg" role="alert">{bookingErrors[delivery._id]}</p>
+                        )}
+                        {!selectionOpen ? (
+                          <p className="muted">The slot selection window has expired.</p>
+                        ) : slots.length === 0 ? (
+                          <p className="muted">No delivery slots are currently available.</p>
+                        ) : (
+                          <div className="delivery-slot-list">
+                            {slots.map((slot) => (
+                              <button
+                                key={slot._id}
+                                className="day"
+                                type="button"
+                                disabled={bookingId !== null}
+                                onClick={() => selectSlot(delivery, slot)}
+                              >
+                                {bookingId === delivery._id
+                                  ? 'Booking…'
+                                  : `${formatDay(slot.date)} · ${slot.start}–${slot.end}`}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
+    </main>
+  );
+}

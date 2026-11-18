@@ -13,6 +13,7 @@ const futureDate = isoDate.refine(
   (value) => value >= new Date().toISOString().slice(0, 10),
   'Date must be today or later'
 );
+const platform = z.enum(['Amazon', 'Flipkart', 'Myntra', 'Ajio', 'Meesho']);
 
 const registerSchema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -47,6 +48,7 @@ const slotSchema = z
 
 const createDeliverySchema = z
   .object({
+    platform,
     orderId: z.string().trim().min(1).max(80),
     address: z.string().trim().min(1).max(500),
     customerId: objectId.optional(),
@@ -73,6 +75,15 @@ const bookSlotSchema = z.object({
   slotId: objectId,
 });
 
+const orderLookupSchema = z.object({
+  platform,
+  orderId: z.string().trim().min(1).max(80),
+});
+
+const orderBookingSchema = orderLookupSchema.extend({
+  slotId: objectId,
+});
+
 const deliveryStatusSchema = z.object({
   status: z.enum(['scheduled', 'out-for-delivery', 'delivered']),
 });
@@ -83,5 +94,7 @@ module.exports = {
   agentSchema,
   createDeliverySchema,
   bookSlotSchema,
+  orderLookupSchema,
+  orderBookingSchema,
   deliveryStatusSchema,
 };

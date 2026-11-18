@@ -43,6 +43,40 @@ async function getDelivery(req, res) {
   });
 }
 
+async function lookupOrder(req, res) {
+  const { platform, orderId } = req.body;
+  const delivery = await Delivery.findOne({ platform, orderId })
+    .populate('slots')
+    .populate('selectedSlotId');
+  if (!delivery) throw new HttpError(404, 'Order not found');
+
+  res.json({
+    platform: delivery.platform,
+    orderId: delivery.orderId,
+    status: delivery.status,
+    selectionExpiresAt: delivery.selectionExpiresAt,
+    slots: delivery.slots.map(serializeSlot),
+    selectedSlot: delivery.selectedSlotId ? serializeSlot(delivery.selectedSlotId) : null,
+  });
+}
+
+async function bookLookupSlot(req, res) {
+  const { platform, orderId, slotId } = req.body;
+  const delivery = await Delivery.findOne({ platform, orderId });
+  if (!delivery) throw new HttpError(404, 'Order not found');
+
+  const now = new Date();
+  if (delivery.selectionExpiresAt <= now) {
+    throw new HttpError(410, 'Delivery selection window has expired');
+  }
+  if (delivery.status !== 'pending') {
+    throw new HttpError(409, 'This delivery is no longer available for booking');
+  }
+
+  const slot = await reserveDeliverySlot(delivery, slotId, now);
+  res.json({ status: 'scheduled', selectedSlot: serializeSlot(slot) });
+}
+
 async function bookSlot(req, res) {
   const tokenHash = hashToken(req.params.token);
   const now = new Date();
@@ -133,8 +167,16 @@ async function reserveDeliverySlot(delivery, slotId, now, customerId) {
 }
 
 async function createDelivery(req, res) {
-  const { orderId, address, customerId, assignedAgentId, selectionMinutes, slots } = req.body;
-  const delivery = { orderId, address };
+  const {
+    platform,
+    orderId,
+    address,
+    customerId,
+    assignedAgentId,
+    selectionMinutes,
+    slots,
+  } = req.body;
+  const delivery = { platform, orderId, address };
 
   if (customerId) {
     const customer = await User.findOne({ _id: customerId, role: 'customer', active: true });
@@ -177,6 +219,7 @@ async function createDelivery(req, res) {
   res.status(201).json({
     delivery: {
       id: String(created._id),
+      platform: created.platform,
       orderId: created.orderId,
       address: created.address,
       selectionExpiresAt: created.selectionExpiresAt,
@@ -243,6 +286,8 @@ async function listCustomerDeliveries(req, res) {
 
 module.exports = {
   getDelivery,
+  lookupOrder,
+  bookLookupSlot,
   bookSlot,
   bookCustomerSlot,
   createDelivery,

@@ -67,6 +67,18 @@ export const getAdminStatus = (token) => request('/api/admin/ping', { token });
 export const getDelivery = (token) =>
   request(`/api/deliveries/${encodeURIComponent(token)}`);
 
+export const lookupOrder = (details) =>
+  request('/api/deliveries/lookup', {
+    method: 'POST',
+    body: JSON.stringify(details),
+  });
+
+export const bookOrderSlot = (details) =>
+  request('/api/deliveries/lookup/slot', {
+    method: 'POST',
+    body: JSON.stringify(details),
+  });
+
 export const confirmSlot = (token, slotId) =>
   request(`/api/deliveries/${encodeURIComponent(token)}/slot`, {
     method: 'POST',

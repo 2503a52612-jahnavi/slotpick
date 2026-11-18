@@ -3,8 +3,8 @@
 For Vercel and Render production deployment, see
 [DEPLOYMENT.md](../DEPLOYMENT.md).
 
-Customer opens a link from SMS/push: https://yourdomain/d/<token>
-They have ~10 min to pick a delivery slot.
+Customers can look up an order from the landing page or open its delivery link:
+`https://yourdomain/#/d/<token>`. Pending orders have a limited selection window.
 
 ## Run web
 
@@ -30,8 +30,8 @@ data is used.
 Open `http://localhost:3000/#/register` to create a customer account, then
 `http://localhost:3000/#/login` to sign in. The session token is stored in
 browser local storage and verified through `/api/auth/me` after refresh.
-The root URL opens the login page for signed-out users; `#/account` opens the
-role-specific account view for signed-in users.
+The root URL opens the landing page. **Get Started** opens the order lookup;
+`#/account` opens the role-specific account view for signed-in users.
 The customer view loads delivery history from `/api/customer/deliveries` and
 shows live slot availability. Selecting a slot books it through the
 authenticated customer delivery endpoint and refreshes the history. The
@@ -65,6 +65,9 @@ Set the API base URL with `REACT_APP_API_URL` (web) or `EXPO_PUBLIC_API_URL`
 
 - `GET /api/deliveries/:token` returns `{ orderId, address, selectionExpiresAt, slots:[{id,date,start,end,available}] }`.
 - `POST /api/deliveries/:token/slot` with `{ "slotId": "..." }` books the slot, returning `{ slotId, date, start, end }`.
+- `POST /api/deliveries/lookup` with `{ "platform": "Amazon", "orderId": "ORD-1001" }` returns the matching MongoDB delivery status and slots without exposing its address or delivery token.
+- `POST /api/deliveries/lookup/slot` with `{ "platform": "Amazon", "orderId": "ORD-1001", "slotId": "<slot-id>" }` books an available slot.
+- New deliveries must include a supported `platform`; existing MongoDB deliveries need their platform set before they can be found through order lookup.
 - Invalid links return 404, expired selection windows return 410, and a slot that is no longer available returns 409.
 
 ### Delivery agent status API
@@ -94,6 +97,7 @@ Use `http://localhost:4000` as the base URL (or the configured `PORT`):
 
    ```json
    {
+     "platform": "Amazon",
      "orderId": "ORD-1001",
      "address": "12 Station Road",
      "selectionMinutes": 10,

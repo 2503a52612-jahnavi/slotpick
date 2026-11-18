@@ -93,6 +93,7 @@ async function seedDemoData() {
   const selectionExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
   if (delivery) {
+    delivery.platform = 'Amazon';
     delivery.address = '12 Station Road, Hanamkonda';
     delivery.assignedAgent = agent._id;
     delivery.selectionExpiresAt = selectionExpiresAt;
@@ -100,6 +101,7 @@ async function seedDemoData() {
     await delivery.save();
   } else {
     await Delivery.create({
+      platform: 'Amazon',
       orderId,
       address: '12 Station Road, Hanamkonda',
       customer: customer._id,

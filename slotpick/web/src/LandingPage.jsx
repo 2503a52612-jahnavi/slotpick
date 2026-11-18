@@ -75,7 +75,7 @@ export default function LandingPage({ onNavigate }) {
           <button className="landing-login-link" type="button" onClick={() => onNavigate('/login')}>
             Login
           </button>
-          <button className="landing-button landing-button-small" type="button" onClick={() => onNavigate('/register')}>
+          <button className="landing-button landing-button-small" type="button" onClick={() => onNavigate('/lookup')}>
             Get Started
           </button>
         </div>
@@ -90,7 +90,7 @@ export default function LandingPage({ onNavigate }) {
               Choose your delivery time slot when your package reaches the local hub.
             </p>
             <div className="landing-hero-actions">
-              <button className="landing-button" type="button" onClick={() => onNavigate('/register')}>
+              <button className="landing-button" type="button" onClick={() => onNavigate('/lookup')}>
                 Get Started <span aria-hidden="true">→</span>
               </button>
               <button className="landing-button-quiet" type="button" onClick={() => onNavigate('/login')}>
@@ -186,7 +186,7 @@ export default function LandingPage({ onNavigate }) {
             <p className="landing-eyebrow">YOUR TIME IS YOURS</p>
             <h2>Make room for a better delivery day.</h2>
           </div>
-          <button className="landing-button landing-button-light" type="button" onClick={() => onNavigate('/register')}>
+          <button className="landing-button landing-button-light" type="button" onClick={() => onNavigate('/lookup')}>
             Get Started <span aria-hidden="true">→</span>
           </button>
         </section>

@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 const deliverySchema = new mongoose.Schema(
   {
+    platform: {
+      type: String,
+      enum: ['Amazon', 'Flipkart', 'Myntra', 'Ajio', 'Meesho'],
+      required: true,
+      trim: true,
+    },
     orderId: { type: String, required: true, trim: true, maxlength: 80 },
     address: { type: String, required: true, trim: true, maxlength: 500 },
     customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
@@ -28,6 +34,14 @@ const deliverySchema = new mongoose.Schema(
     selectedSlotId: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliverySlot' },
   },
   { timestamps: true }
+);
+
+deliverySchema.index(
+  { platform: 1, orderId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { platform: { $type: 'string' } },
+  }
 );
 
 module.exports = mongoose.model('Delivery', deliverySchema);

@@ -6,6 +6,8 @@ const {
   loginSchema,
   createDeliverySchema,
   bookSlotSchema,
+  orderLookupSchema,
+  orderBookingSchema,
   deliveryStatusSchema,
 } = require('../src/middleware/schemas');
 
@@ -29,6 +31,7 @@ test('login normalizes email', () => {
 
 test('delivery input validates calendar dates and slot ordering, with safe defaults', () => {
   const result = createDeliverySchema.parse({
+    platform: 'Amazon',
     orderId: 'ORD-1',
     address: '12 Station Road',
     slots: [{ date: '2027-01-15', start: '09:00', end: '11:00' }],
@@ -38,6 +41,15 @@ test('delivery input validates calendar dates and slot ordering, with safe defau
   assert.equal(result.slots[0].capacity, 1);
   assert.equal(
     createDeliverySchema.safeParse({
+      orderId: 'ORD-NO-PLATFORM',
+      address: '12 Station Road',
+      slots: [{ date: '2027-01-15', start: '09:00', end: '11:00' }],
+    }).success,
+    false
+  );
+  assert.equal(
+    createDeliverySchema.safeParse({
+      platform: 'Amazon',
       orderId: 'ORD-2',
       address: '12 Station Road',
       slots: [{ date: '2027-02-30', start: '11:00', end: '09:00' }],
@@ -46,6 +58,7 @@ test('delivery input validates calendar dates and slot ordering, with safe defau
   );
   assert.equal(
     createDeliverySchema.safeParse({
+      platform: 'Amazon',
       orderId: 'ORD-2',
       address: '12 Station Road',
       slots: [{ date: '2020-01-01', start: '09:00', end: '11:00' }],
@@ -56,6 +69,7 @@ test('delivery input validates calendar dates and slot ordering, with safe defau
 
 test('duplicate slots and malformed booking ids are rejected', () => {
   const duplicated = createDeliverySchema.safeParse({
+    platform: 'Amazon',
     orderId: 'ORD-3',
     address: '12 Station Road',
     slots: [
@@ -66,6 +80,17 @@ test('duplicate slots and malformed booking ids are rejected', () => {
 
   assert.equal(duplicated.success, false);
   assert.equal(bookSlotSchema.safeParse({ slotId: 'not-an-object-id' }).success, false);
+  const lookup = orderLookupSchema.parse({ platform: 'Amazon', orderId: ' ORD-4 ' });
+  assert.equal(lookup.orderId, 'ORD-4');
+  assert.equal(orderLookupSchema.safeParse({ platform: 'Other', orderId: 'ORD-4' }).success, false);
+  assert.equal(
+    orderBookingSchema.safeParse({
+      platform: 'Amazon',
+      orderId: 'ORD-4',
+      slotId: 'not-an-object-id',
+    }).success,
+    false
+  );
   assert.equal(deliveryStatusSchema.safeParse({ status: 'out-for-delivery' }).success, true);
   assert.equal(deliveryStatusSchema.safeParse({ status: 'skip-to-delivered' }).success, false);
 });

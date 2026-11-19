@@ -56,7 +56,7 @@ directory. The configured admin is created on first startup and is not reset
 on later starts.
 
 To seed development data, run `npm run seed-demo` from `apps/api`. This creates
-or reuses the demo customer and agent, creates five demo deliveries
+or reuses the demo customer, agent, and admin, creates five demo deliveries
 (`Amazon/ID_101`/Jahnavi, `Flipkart/ID_102`/Aarav,
 `Myntra/ID_103`/Priya, `Ajio/ID_104`/Rohan, and `Meesho/ID_105`/Ananya), and
 attaches three delivery slots to each order.
@@ -64,20 +64,25 @@ The seed is repeatable and refuses to run when `NODE_ENV=production`. Each run
 resets those five orders to `pending`, clears their selected slots, and gives
 them a fresh 24-hour selection window. Demo-only slot counts are reset; shared
 slots retain counts for non-demo bookings, and non-demo deliveries are not
-modified. Each run also sets the passwords for these dedicated demo accounts;
-use a different email with the corresponding environment variable if that
-account already belongs to someone else.
+modified. Each run restores the fixed demo team accounts and passwords.
 
-Default development account credentials:
+Public development demo account credentials:
 
 - Customer: `demo-customer@slotpick.example` / `DemoCustomer123!`
-- Agent: `demo-agent@slotpick.example` / `DemoAgent123!`
-- Admin: `demo-admin@slotpick.example` / `DemoAdmin123!`
+- Agent: `demo-agent@slotpick.example` / `AgentDemo2026Pass`
+- Admin: `demo-admin@slotpick.example` / `AdminDemo2026Pass`
 
-Set `DEMO_CUSTOMER_EMAIL`, `DEMO_CUSTOMER_PASSWORD`, `DEMO_AGENT_EMAIL`,
-`DEMO_AGENT_PASSWORD`, or `DEMO_ADMIN_PASSWORD` before seeding to override the
-corresponding defaults. The demo admin email is fixed. Sign in with the demo
-customer details from the landing page to find a delivery.
+The fixed agent and admin passwords are for demos only. Remove or change them
+before any real use. The seed ignores `DEMO_AGENT_EMAIL`,
+`DEMO_AGENT_PASSWORD`, and `DEMO_ADMIN_PASSWORD`; only customer credentials
+can be overridden with `DEMO_CUSTOMER_EMAIL` and `DEMO_CUSTOMER_PASSWORD`.
+Sign in with the demo customer details from the landing page to find a
+delivery.
+
+After seeding and starting the API, verify both team logins and the agent's
+demo delivery list with `node scripts/checkDemoTeamLogin.js` from `apps/api`.
+This script uses the real `POST /api/auth/login` route and checks the returned
+token and role.
 
 Set the API base URL with `REACT_APP_API_URL` (web) or `EXPO_PUBLIC_API_URL`
 (mobile). The delivery-selection API contract is:

@@ -1,4 +1,3 @@
-require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
@@ -7,13 +6,10 @@ const { connectDb } = require('../src/db');
 const Delivery = require('../src/models/Delivery');
 const DeliverySlot = require('../src/models/DeliverySlot');
 const User = require('../src/models/User');
+const DEMO_TEAM_ACCOUNTS = require('./demoTeamAccounts');
 
 const DEFAULT_CUSTOMER_EMAIL = 'demo-customer@slotpick.example';
 const DEFAULT_CUSTOMER_PASSWORD = 'DemoCustomer123!';
-const DEFAULT_AGENT_EMAIL = 'demo-agent@slotpick.example';
-const DEFAULT_AGENT_PASSWORD = 'DemoAgent123!';
-const DEFAULT_ADMIN_EMAIL = 'demo-admin@slotpick.example';
-const DEFAULT_ADMIN_PASSWORD = 'DemoAdmin123!';
 const DEMO_ORDERS = [
   { platform: 'Amazon', orderId: 'ID_101', customerName: 'Jahnavi' },
   { platform: 'Flipkart', orderId: 'ID_102', customerName: 'Aarav' },
@@ -45,6 +41,7 @@ async function ensureDemoUser({ email, password, name, role }) {
     if (existing.role !== role) {
       throw new Error(`${email} is already used by a non-${role} account`);
     }
+    existing.name = name;
     existing.active = true;
     existing.passwordHash = await bcrypt.hash(password, 12);
     await existing.save();
@@ -85,29 +82,14 @@ async function seedDemoData() {
     .trim()
     .toLowerCase();
   const customerPassword = process.env.DEMO_CUSTOMER_PASSWORD || DEFAULT_CUSTOMER_PASSWORD;
-  const agentEmail = (process.env.DEMO_AGENT_EMAIL || DEFAULT_AGENT_EMAIL)
-    .trim()
-    .toLowerCase();
-  const agentPassword = process.env.DEMO_AGENT_PASSWORD || DEFAULT_AGENT_PASSWORD;
-  const adminPassword = process.env.DEMO_ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
   const customer = await ensureDemoUser({
     email: customerEmail,
     password: customerPassword,
     name: 'Demo Customer',
     role: 'customer',
   });
-  const agent = await ensureDemoUser({
-    email: agentEmail,
-    password: agentPassword,
-    name: 'Demo Delivery Agent',
-    role: 'agent',
-  });
-  const admin = await ensureDemoUser({
-    email: DEFAULT_ADMIN_EMAIL,
-    password: adminPassword,
-    name: 'Demo Admin',
-    role: 'admin',
-  });
+  const agent = await ensureDemoUser(DEMO_TEAM_ACCOUNTS.agent);
+  const admin = await ensureDemoUser(DEMO_TEAM_ACCOUNTS.admin);
   const previousDemoDeliveries = await Delivery.find(demoOrdersFilter())
     .select('slots')
     .lean();
@@ -177,10 +159,15 @@ async function seedDemoData() {
   );
 }
 
-connectDb()
-  .then(seedDemoData)
-  .catch((error) => {
-    console.error(error.message);
-    process.exitCode = 1;
-  })
-  .finally(() => mongoose.disconnect());
+if (require.main === module) {
+  require('dotenv').config();
+  connectDb()
+    .then(seedDemoData)
+    .catch((error) => {
+      console.error(error.message);
+      process.exitCode = 1;
+    })
+    .finally(() => mongoose.disconnect());
+}
+
+module.exports = { seedDemoData };

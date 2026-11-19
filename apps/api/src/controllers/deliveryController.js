@@ -287,7 +287,7 @@ async function createDelivery(req, res) {
 
 async function listAssignedDeliveries(req, res) {
   const deliveries = await Delivery.find({ assignedAgent: req.user._id })
-    .select('orderId address status selectionExpiresAt selectedSlotId slots createdAt')
+    .select('platform orderId customerName address status selectionExpiresAt selectedSlotId slots createdAt')
     .populate('slots selectedSlotId')
     .sort({ createdAt: -1 });
   res.json({ deliveries });

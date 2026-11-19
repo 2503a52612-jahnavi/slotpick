@@ -129,11 +129,16 @@ export default function AgentDashboard({ user, token, onLogout }) {
                       {STATUS_LABELS[status] || status.replace(/-/g, ' ')}
                     </span>
                   </div>
+                  <span><strong>Platform:</strong> {delivery.platform}</span>
+                  <span><strong>Customer:</strong> {delivery.customerName || 'Name not provided'}</span>
                   <span>{delivery.address}</span>
                   {delivery.selectedSlotId && (
                     <span>
                       {formatDay(delivery.selectedSlotId.date)} · {delivery.selectedSlotId.start}–{delivery.selectedSlotId.end}
                     </span>
+                  )}
+                  {!delivery.selectedSlotId && (
+                    <span className="muted">No delivery slot selected yet.</span>
                   )}
                   {status === 'pending' && !delivery.selectedSlotId && (
                     <p className="muted">Waiting for the customer to select a delivery slot.</p>

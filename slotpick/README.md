@@ -68,15 +68,16 @@ modified. Each run also sets the passwords for these dedicated demo accounts;
 use a different email with the corresponding environment variable if that
 account already belongs to someone else.
 
-Default development sign-in credentials:
+Default development account credentials:
 
 - Customer: `demo-customer@slotpick.example` / `DemoCustomer123!`
 - Agent: `demo-agent@slotpick.example` / `DemoAgent123!`
+- Admin: `demo-admin@slotpick.example` / `DemoAdmin123!`
 
-Set `DEMO_CUSTOMER_EMAIL`, `DEMO_CUSTOMER_PASSWORD`, `DEMO_AGENT_EMAIL`, or
-`DEMO_AGENT_PASSWORD` before seeding to override these values. Sign in with the
-demo customer account to view its deliveries; platform and order ID alone do
-not grant access.
+Set `DEMO_CUSTOMER_EMAIL`, `DEMO_CUSTOMER_PASSWORD`, `DEMO_AGENT_EMAIL`,
+`DEMO_AGENT_PASSWORD`, or `DEMO_ADMIN_PASSWORD` before seeding to override the
+corresponding defaults. The demo admin email is fixed. Sign in with the demo
+customer details from the landing page to find a delivery.
 
 Set the API base URL with `REACT_APP_API_URL` (web) or `EXPO_PUBLIC_API_URL`
 (mobile). The delivery-selection API contract is:

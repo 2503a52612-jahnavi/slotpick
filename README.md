@@ -128,16 +128,17 @@ Rerunning the seed resets these orders to `pending`, clears their selected
 slots, and refreshes the 24-hour selection window. It resets demo-only slot
 counts while preserving non-demo reservations on shared slots.
 
-Test sign-in credentials for the seeded customer and agent:
+Development demo account credentials:
 
 - Customer: `demo-customer@slotpick.example` / `DemoCustomer123!`
 - Agent: `demo-agent@slotpick.example` / `DemoAgent123!`
+- Admin: `demo-admin@slotpick.example` / `DemoAdmin123!`
 
 These are development-only credentials. Each reseed restores these passwords;
 override them with `DEMO_CUSTOMER_EMAIL`, `DEMO_CUSTOMER_PASSWORD`,
-`DEMO_AGENT_EMAIL`, and `DEMO_AGENT_PASSWORD` when appropriate. Sign in with
-the demo customer account to view its deliveries; platform and order ID alone
-do not grant access.
+`DEMO_AGENT_EMAIL`, `DEMO_AGENT_PASSWORD`, or `DEMO_ADMIN_PASSWORD` when
+appropriate. Customers use the landing-page order lookup; platform and order
+ID alone do not grant access.
 🚚 Delivery Workflow
 Plain Text
 Admin Creates Delivery

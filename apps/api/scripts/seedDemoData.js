@@ -12,6 +12,8 @@ const DEFAULT_CUSTOMER_EMAIL = 'demo-customer@slotpick.example';
 const DEFAULT_CUSTOMER_PASSWORD = 'DemoCustomer123!';
 const DEFAULT_AGENT_EMAIL = 'demo-agent@slotpick.example';
 const DEFAULT_AGENT_PASSWORD = 'DemoAgent123!';
+const DEFAULT_ADMIN_EMAIL = 'demo-admin@slotpick.example';
+const DEFAULT_ADMIN_PASSWORD = 'DemoAdmin123!';
 const DEMO_ORDERS = [
   { platform: 'Amazon', orderId: 'ID_101', customerName: 'Jahnavi' },
   { platform: 'Flipkart', orderId: 'ID_102', customerName: 'Aarav' },
@@ -87,6 +89,7 @@ async function seedDemoData() {
     .trim()
     .toLowerCase();
   const agentPassword = process.env.DEMO_AGENT_PASSWORD || DEFAULT_AGENT_PASSWORD;
+  const adminPassword = process.env.DEMO_ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
   const customer = await ensureDemoUser({
     email: customerEmail,
     password: customerPassword,
@@ -98,6 +101,12 @@ async function seedDemoData() {
     password: agentPassword,
     name: 'Demo Delivery Agent',
     role: 'agent',
+  });
+  const admin = await ensureDemoUser({
+    email: DEFAULT_ADMIN_EMAIL,
+    password: adminPassword,
+    name: 'Demo Admin',
+    role: 'admin',
   });
   const previousDemoDeliveries = await Delivery.find(demoOrdersFilter())
     .select('slots')
@@ -163,6 +172,7 @@ async function seedDemoData() {
   console.log(
     `Demo orders ${DEMO_ORDERS.map(({ orderId }) => orderId).join(', ')} were reset for ` +
     `${customer.email}; ${slots.length} slots each; assigned agent ${agent.email}; ` +
+    `demo admin ${admin.email}; ` +
     `database ${mongoose.connection.name}`
   );
 }

@@ -1,25 +1,28 @@
+import { useState } from 'react';
+import { lookupDelivery } from './api';
+
 const platforms = ['Amazon', 'Flipkart', 'Myntra', 'Ajio', 'Meesho'];
 
 const steps = [
   {
     number: '01',
-    title: 'Sign in securely',
-    description: 'View deliveries linked to your customer account or use your private delivery link.',
+    title: 'Find your order',
+    description: 'Enter the name and order details associated with your delivery.',
   },
   {
     number: '02',
-    title: 'View Available Slots',
+    title: 'View available slots',
     description: 'See the delivery windows available when your package reaches the hub.',
   },
   {
     number: '03',
-    title: 'Choose Delivery Time',
+    title: 'Choose a delivery time',
     description: 'Pick a time that works for you. Your day stays yours.',
   },
   {
     number: '04',
-    title: 'Receive Status Updates',
-    description: 'Know when your delivery is on its way and when it arrives.',
+    title: 'Track your delivery',
+    description: 'Follow status updates from scheduling through delivery.',
   },
 ];
 
@@ -52,6 +55,28 @@ function scrollToSection(id) {
 }
 
 export default function LandingPage({ onNavigate }) {
+  const [searching, setSearching] = useState(false);
+  const [lookupError, setLookupError] = useState('');
+
+  async function findOrder(event) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setSearching(true);
+    setLookupError('');
+    try {
+      const result = await lookupDelivery({
+        name: String(form.get('name')),
+        platform: String(form.get('platform')),
+        orderId: String(form.get('orderId')),
+      });
+      onNavigate(`/schedule/${result.trackingToken}`);
+    } catch (error) {
+      setLookupError(error.message);
+    } finally {
+      setSearching(false);
+    }
+  }
+
   return (
     <div className="landing-page">
       <header className="landing-header">
@@ -73,10 +98,7 @@ export default function LandingPage({ onNavigate }) {
 
         <div className="landing-header-actions">
           <button className="landing-login-link" type="button" onClick={() => onNavigate('/login')}>
-            Login
-          </button>
-          <button className="landing-button landing-button-small" type="button" onClick={() => onNavigate('/account')}>
-            Get Started
+            Team sign in
           </button>
         </div>
       </header>
@@ -87,18 +109,31 @@ export default function LandingPage({ onNavigate }) {
             <p className="landing-eyebrow"><span /> DELIVERY, ON YOUR TIME</p>
             <h1>Never wait all day for a delivery <em>again.</em></h1>
             <p className="landing-hero-description">
-              Choose your delivery time slot when your package reaches the local hub.
+              Find your order, choose a delivery time, and track it — no customer account needed.
             </p>
-            <div className="landing-hero-actions">
-              <button className="landing-button" type="button" onClick={() => onNavigate('/account')}>
-                Get Started <span aria-hidden="true">→</span>
+            <form className="lookup-form landing-order-lookup" onSubmit={findOrder}>
+              <div className="lookup-field">
+                <label htmlFor="lookup-name">Name on the order</label>
+                <input id="lookup-name" name="name" type="text" autoComplete="name" minLength="2" maxLength="80" required />
+              </div>
+              <div className="lookup-field">
+                <label htmlFor="lookup-platform">Shopping platform</label>
+                <select id="lookup-platform" name="platform" defaultValue="" required>
+                  <option value="" disabled>Select a platform</option>
+                  {platforms.map((platform) => <option key={platform}>{platform}</option>)}
+                </select>
+              </div>
+              <div className="lookup-field">
+                <label htmlFor="lookup-order-id">Order ID</label>
+                <input id="lookup-order-id" name="orderId" type="text" maxLength="80" required />
+              </div>
+              {lookupError && <p className="lookup-error" role="alert">{lookupError}</p>}
+              <button className="landing-button lookup-search-button" type="submit" disabled={searching}>
+                {searching ? 'Finding your order…' : 'Find my order'}
               </button>
-              <button className="landing-button-quiet" type="button" onClick={() => onNavigate('/login')}>
-                Login
-              </button>
-            </div>
+            </form>
             <p className="landing-hero-note">
-              A little more certainty. A lot more time for you.
+              Your order details are used only to find your delivery.
             </p>
           </div>
 
@@ -186,8 +221,8 @@ export default function LandingPage({ onNavigate }) {
             <p className="landing-eyebrow">YOUR TIME IS YOURS</p>
             <h2>Make room for a better delivery day.</h2>
           </div>
-          <button className="landing-button landing-button-light" type="button" onClick={() => onNavigate('/account')}>
-            Get Started <span aria-hidden="true">→</span>
+          <button className="landing-button landing-button-light" type="button" onClick={() => onNavigate('/login')}>
+            Team sign in <span aria-hidden="true">→</span>
           </button>
         </section>
       </main>
@@ -198,7 +233,7 @@ export default function LandingPage({ onNavigate }) {
           <span>slotpick</span>
         </a>
         <p>More time for what matters.</p>
-        <button type="button" onClick={() => onNavigate('/login')}>Login</button>
+        <button type="button" onClick={() => onNavigate('/login')}>Team sign in</button>
       </footer>
     </div>
   );

@@ -31,14 +31,26 @@ test('delivery input validates calendar dates and slot ordering, with safe defau
   const result = createDeliverySchema.parse({
     platform: 'Amazon',
     orderId: 'ORD-1',
+    customerName: 'Customer Name',
     address: '12 Station Road',
     slots: [{ date: '2027-01-15', start: '09:00', end: '11:00' }],
   });
 
   assert.equal(result.selectionMinutes, 10);
   assert.equal(result.slots[0].capacity, 1);
+  assert.equal(result.customerName, 'Customer Name');
   assert.equal(
     createDeliverySchema.safeParse({
+      platform: 'Amazon',
+      orderId: 'ORD-1',
+      address: '12 Station Road',
+      slots: [{ date: '2027-01-15', start: '09:00', end: '11:00' }],
+    }).success,
+    false
+  );
+  assert.equal(
+    createDeliverySchema.safeParse({
+      customerName: 'Customer Name',
       orderId: 'ORD-NO-PLATFORM',
       address: '12 Station Road',
       slots: [{ date: '2027-01-15', start: '09:00', end: '11:00' }],
@@ -49,6 +61,7 @@ test('delivery input validates calendar dates and slot ordering, with safe defau
     createDeliverySchema.safeParse({
       platform: 'Amazon',
       orderId: 'ORD-2',
+      customerName: 'Customer Name',
       address: '12 Station Road',
       slots: [{ date: '2027-02-30', start: '11:00', end: '09:00' }],
     }).success,
@@ -58,6 +71,7 @@ test('delivery input validates calendar dates and slot ordering, with safe defau
     createDeliverySchema.safeParse({
       platform: 'Amazon',
       orderId: 'ORD-2',
+      customerName: 'Customer Name',
       address: '12 Station Road',
       slots: [{ date: '2020-01-01', start: '09:00', end: '11:00' }],
     }).success,
@@ -69,6 +83,7 @@ test('duplicate slots, malformed booking ids, and unsupported statuses are rejec
   const duplicated = createDeliverySchema.safeParse({
     platform: 'Amazon',
     orderId: 'ORD-3',
+    customerName: 'Customer Name',
     address: '12 Station Road',
     slots: [
       { date: '2027-01-15', start: '09:00', end: '11:00' },

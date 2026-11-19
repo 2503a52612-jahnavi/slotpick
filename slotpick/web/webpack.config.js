@@ -4,7 +4,12 @@ const webpack = require('webpack');
 
 module.exports = {
   entry: './src/index.jsx',
-  output: { path: path.resolve(__dirname, 'dist'), filename: '[name].[contenthash].js', clean: true },
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: '[name].[contenthash].js',
+    publicPath: '/',
+    clean: true
+  },
   resolve: { extensions: ['.js', '.jsx'] },
   module: {
     rules: [

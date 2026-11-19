@@ -71,6 +71,21 @@ export const updateAgentDeliveryStatus = (token, deliveryId, status) =>
   });
 export const getAdminStatus = (token) => request('/api/admin/ping', { token });
 
+export const lookupDelivery = (details) =>
+  request('/api/deliveries/lookup', {
+    method: 'POST',
+    body: JSON.stringify(details),
+  });
+
+export const getTrackedDelivery = (trackingToken) =>
+  request(`/api/deliveries/track/${encodeURIComponent(trackingToken)}`);
+
+export const bookTrackedSlot = (trackingToken, slotId) =>
+  request(`/api/deliveries/track/${encodeURIComponent(trackingToken)}/slot`, {
+    method: 'POST',
+    body: JSON.stringify({ slotId }),
+  });
+
 export const getDelivery = (token) =>
   request(`/api/deliveries/${encodeURIComponent(token)}`);
 

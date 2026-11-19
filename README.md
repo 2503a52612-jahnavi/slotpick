@@ -116,13 +116,13 @@ npm run seed-demo
 The script is development-only and refuses to run with `NODE_ENV=production`.
 It creates five orders, each with three delivery slots:
 
-| Platform | Order ID |
-| --- | --- |
-| Amazon | `ID_101` |
-| Flipkart | `ID_102` |
-| Myntra | `ID_103` |
-| Ajio | `ID_104` |
-| Meesho | `ID_105` |
+| Platform | Order ID | Name |
+| --- | --- | --- |
+| Amazon | `ID_101` | Jahnavi |
+| Flipkart | `ID_102` | Aarav |
+| Myntra | `ID_103` | Priya |
+| Ajio | `ID_104` | Rohan |
+| Meesho | `ID_105` | Ananya |
 
 Rerunning the seed resets these orders to `pending`, clears their selected
 slots, and refreshes the 24-hour selection window. It resets demo-only slot

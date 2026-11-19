@@ -21,6 +21,64 @@ function serializeSlot(slot) {
   };
 }
 
+async function lookupDelivery(req, res) {
+  const { name, platform, orderId } = req.body;
+  const delivery = await Delivery.findOne({
+    platform,
+    orderId,
+  }).populate('slots');
+  const normalizedName = name.trim().toLowerCase();
+  if (
+    !delivery ||
+    delivery.customerName?.trim().toLowerCase() !== normalizedName
+  ) {
+    throw new HttpError(404, 'We could not find that order.');
+  }
+
+  const trackingToken = crypto.randomBytes(32).toString('hex');
+  delivery.trackingTokenHash = hashToken(trackingToken);
+  await delivery.save();
+
+  res.json({
+    delivery: {
+      orderId: delivery.orderId,
+      platform: delivery.platform,
+      address: delivery.address,
+      status: delivery.status,
+      selectionExpiresAt: delivery.selectionExpiresAt,
+      slots: delivery.slots.map(serializeSlot),
+    },
+    trackingToken,
+  });
+}
+
+async function getTrackedDelivery(req, res) {
+  const delivery = await Delivery.findOne({
+    trackingTokenHash: hashToken(req.params.token),
+  })
+    .populate('slots')
+    .populate('selectedSlotId')
+    .populate({ path: 'assignedAgent', select: 'name' });
+  if (!delivery) throw new HttpError(404, 'Delivery not found');
+
+  const statusHistory = delivery.statusHistory?.length
+    ? delivery.statusHistory
+    : [{ status: delivery.status, at: delivery.createdAt }];
+  res.json({
+    delivery: {
+      orderId: delivery.orderId,
+      platform: delivery.platform,
+      address: delivery.address,
+      status: delivery.status,
+      selectionExpiresAt: delivery.selectionExpiresAt,
+      selectedSlot: delivery.selectedSlotId ? serializeSlot(delivery.selectedSlotId) : null,
+      slots: delivery.slots.map(serializeSlot),
+      statusHistory: statusHistory.map(({ status, at }) => ({ status, at })),
+      assignedAgentName: delivery.assignedAgent?.name || null,
+    },
+  });
+}
+
 async function getDelivery(req, res) {
   const delivery = await Delivery.findOne({ deliveryTokenHash: hashToken(req.params.token) })
     .populate('slots')
@@ -56,6 +114,28 @@ async function bookSlot(req, res) {
   }
   const slot = await reserveDeliverySlot(existing, req.body.slotId, now);
 
+  res.json({
+    slotId: String(slot._id),
+    date: slot.date,
+    start: slot.start,
+    end: slot.end,
+  });
+}
+
+async function bookTrackedSlot(req, res) {
+  const delivery = await Delivery.findOne({
+    trackingTokenHash: hashToken(req.params.token),
+  });
+  if (!delivery) throw new HttpError(404, 'Delivery not found');
+
+  const now = new Date();
+  if (delivery.selectionExpiresAt <= now) {
+    throw new HttpError(410, 'Delivery selection window has expired');
+  }
+  if (delivery.status !== 'pending') {
+    throw new HttpError(409, 'This delivery has already been scheduled');
+  }
+  const slot = await reserveDeliverySlot(delivery, req.body.slotId, now);
   res.json({
     slotId: String(slot._id),
     date: slot.date,
@@ -120,7 +200,10 @@ async function reserveDeliverySlot(delivery, slotId, now, customerId) {
 
       const updated = await Delivery.findOneAndUpdate(
         deliveryFilter,
-        { $set: { status: 'scheduled', selectedSlotId: slot._id } },
+        {
+          $set: { status: 'scheduled', selectedSlotId: slot._id },
+          $push: { statusHistory: { status: 'scheduled', at: now } },
+        },
         { new: true, session }
       );
       if (!updated) throw new HttpError(409, 'This delivery has already been scheduled');
@@ -136,6 +219,7 @@ async function createDelivery(req, res) {
   const {
     platform,
     orderId,
+    customerName,
     address,
     customerId,
     assignedAgentId,
@@ -148,6 +232,9 @@ async function createDelivery(req, res) {
     const customer = await User.findOne({ _id: customerId, role: 'customer', active: true });
     if (!customer) throw new HttpError(404, 'Customer not found');
     delivery.customer = customer._id;
+    delivery.customerName = customerName || customer.name;
+  } else if (customerName) {
+    delivery.customerName = customerName;
   }
 
   if (assignedAgentId) {
@@ -157,6 +244,7 @@ async function createDelivery(req, res) {
   }
 
   const token = crypto.randomBytes(32).toString('hex');
+  const now = new Date();
   const selectionExpiresAt = new Date(Date.now() + selectionMinutes * 60 * 1000);
   const availableSlots = [];
   for (const slot of slots) {
@@ -179,6 +267,7 @@ async function createDelivery(req, res) {
     deliveryTokenHash: hashToken(token),
     selectionExpiresAt,
     slots: availableSlots,
+    statusHistory: [{ status: 'pending', at: now }],
   });
   await created.populate('slots');
 
@@ -234,7 +323,10 @@ async function updateAssignedDeliveryStatus(req, res) {
       assignedAgent: req.user._id,
       status: delivery.status,
     },
-    { $set: { status: nextStatus } },
+    {
+      $set: { status: nextStatus },
+      $push: { statusHistory: { status: nextStatus, at: new Date() } },
+    },
     { returnDocument: 'after' }
   ).populate('slots selectedSlotId');
   if (!updated) throw new HttpError(409, 'Delivery status was updated by another request');
@@ -251,6 +343,9 @@ async function listCustomerDeliveries(req, res) {
 }
 
 module.exports = {
+  lookupDelivery,
+  getTrackedDelivery,
+  bookTrackedSlot,
   getDelivery,
   bookSlot,
   bookCustomerSlot,

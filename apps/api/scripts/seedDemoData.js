@@ -13,11 +13,11 @@ const DEFAULT_CUSTOMER_PASSWORD = 'DemoCustomer123!';
 const DEFAULT_AGENT_EMAIL = 'demo-agent@slotpick.example';
 const DEFAULT_AGENT_PASSWORD = 'DemoAgent123!';
 const DEMO_ORDERS = [
-  { platform: 'Amazon', orderId: 'ID_101' },
-  { platform: 'Flipkart', orderId: 'ID_102' },
-  { platform: 'Myntra', orderId: 'ID_103' },
-  { platform: 'Ajio', orderId: 'ID_104' },
-  { platform: 'Meesho', orderId: 'ID_105' },
+  { platform: 'Amazon', orderId: 'ID_101', customerName: 'Jahnavi' },
+  { platform: 'Flipkart', orderId: 'ID_102', customerName: 'Aarav' },
+  { platform: 'Myntra', orderId: 'ID_103', customerName: 'Priya' },
+  { platform: 'Ajio', orderId: 'ID_104', customerName: 'Rohan' },
+  { platform: 'Meesho', orderId: 'ID_105', customerName: 'Ananya' },
 ];
 const SLOT_TIMES = [
   ['09:00', '11:00'],
@@ -103,19 +103,22 @@ async function seedDemoData() {
     .select('slots')
     .lean();
   const slots = await ensureDemoSlots(demoDate());
-  const selectionExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const resetAt = new Date();
+  const selectionExpiresAt = new Date(resetAt.getTime() + 24 * 60 * 60 * 1000);
 
-  for (const { platform, orderId } of DEMO_ORDERS) {
+  for (const { platform, orderId, customerName } of DEMO_ORDERS) {
     await Delivery.findOneAndUpdate(
       { platform, orderId },
       {
         $set: {
           address: '12 Station Road, Hanamkonda',
+          customerName,
           customer: customer._id,
           assignedAgent: agent._id,
           selectionExpiresAt,
           slots: slots.map((slot) => slot._id),
           status: 'pending',
+          statusHistory: [{ status: 'pending', at: resetAt }],
         },
         $unset: { selectedSlotId: 1 },
         $setOnInsert: {

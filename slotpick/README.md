@@ -57,8 +57,9 @@ on later starts.
 
 To seed development data, run `npm run seed-demo` from `apps/api`. This creates
 or reuses the demo customer and agent, creates five demo deliveries
-(`Amazon/ID_101`, `Flipkart/ID_102`, `Myntra/ID_103`, `Ajio/ID_104`, and
-`Meesho/ID_105`), and attaches three available delivery slots to each order.
+(`Amazon/ID_101`/Jahnavi, `Flipkart/ID_102`/Aarav,
+`Myntra/ID_103`/Priya, `Ajio/ID_104`/Rohan, and `Meesho/ID_105`/Ananya), and
+attaches three delivery slots to each order.
 The seed is repeatable and refuses to run when `NODE_ENV=production`. Each run
 resets those five orders to `pending`, clears their selected slots, and gives
 them a fresh 24-hour selection window. Demo-only slot counts are reset; shared

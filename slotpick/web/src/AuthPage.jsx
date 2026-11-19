@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { login, register } from './api';
+import { login } from './api';
 
-export default function AuthPage({ mode, onAuthenticated, onNavigate }) {
-  const isRegister = mode === 'register';
+export default function AuthPage({ onAuthenticated }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -16,14 +15,11 @@ export default function AuthPage({ mode, onAuthenticated, onNavigate }) {
     const password = String(form.get('password'));
 
     try {
-      const result = isRegister
-        ? await register({
-            name: String(form.get('name')).trim(),
-            email,
-            password,
-            phone: String(form.get('phone') || '').trim() || undefined,
-          })
-        : await login({ email, password });
+      const result = await login({ email, password });
+      if (result.user.role === 'customer') {
+        setError('Customer delivery lookup does not require an account. Find your order from the home page.');
+        return;
+      }
       onAuthenticated(result);
     } catch (requestError) {
       setError(requestError.message);
@@ -34,20 +30,10 @@ export default function AuthPage({ mode, onAuthenticated, onNavigate }) {
 
   return (
     <main className="card auth-card">
-      <h1>{isRegister ? 'Create your account' : 'Welcome back'}</h1>
-      <p className="muted">
-        {isRegister ? 'Register as a customer to get started.' : 'Sign in to view your account.'}
-      </p>
+      <h1>Team sign in</h1>
+      <p className="muted">Administrators and delivery agents can sign in here.</p>
 
       <form className="form" onSubmit={submit}>
-        {isRegister && (
-          <>
-            <label htmlFor="name">Name</label>
-            <input id="name" name="name" type="text" autoComplete="name" minLength="2" maxLength="80" required />
-            <label htmlFor="phone">Phone (optional)</label>
-            <input id="phone" name="phone" type="tel" autoComplete="tel" />
-          </>
-        )}
         <label htmlFor="email">Email</label>
         <input id="email" name="email" type="email" autoComplete="email" maxLength="254" required />
         <label htmlFor="password">Password</label>
@@ -55,27 +41,15 @@ export default function AuthPage({ mode, onAuthenticated, onNavigate }) {
           id="password"
           name="password"
           type="password"
-          autoComplete={isRegister ? 'new-password' : 'current-password'}
-          minLength={isRegister ? '8' : undefined}
+          autoComplete="current-password"
           maxLength="72"
           required
         />
         {error && <p className="msg" role="alert">{error}</p>}
         <button className="confirm" type="submit" disabled={loading}>
-          {loading ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
+          {loading ? 'Please wait…' : 'Sign in'}
         </button>
       </form>
-
-      <p className="auth-switch">
-        {isRegister ? 'Already have an account?' : 'New to SlotPick?'}{' '}
-        <button
-          className="text-button"
-          type="button"
-          onClick={() => onNavigate(isRegister ? '/login' : '/register')}
-        >
-          {isRegister ? 'Sign in' : 'Create an account'}
-        </button>
-      </p>
     </main>
   );
 }

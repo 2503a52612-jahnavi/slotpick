@@ -5,22 +5,26 @@ import AccountPage from './AccountPage';
 import AuthPage from './AuthPage';
 import DeliveryPage from './DeliveryPage';
 import LandingPage from './LandingPage';
+import SchedulePage from './SchedulePage';
+import TrackingPage from './TrackingPage';
 
 const TOKEN_KEY = 'slotpick.jwt';
 
 function getRoute() {
   const hashPath = window.location.hash.replace(/^#/, '');
-  if (!hashPath) {
-    return window.location.pathname === '/' ? { type: 'home' } : { type: 'redirect' };
-  }
+  const path = hashPath || window.location.pathname;
+  if (!path || path === '/') return { type: 'home' };
 
-  const deliveryMatch = hashPath.match(/^\/d\/([\w-]+)$/);
+  const deliveryMatch = path.match(/^\/d\/([\w-]+)$/);
   if (deliveryMatch) return { type: 'delivery', token: deliveryMatch[1] };
-  if (hashPath === '/login' || hashPath === '/register') {
-    return { type: 'auth', mode: hashPath.slice(1) };
-  }
-  if (hashPath === '/account') return { type: 'account' };
-  if (hashPath === '/') return { type: 'home' };
+  const scheduleMatch = path.match(/^\/schedule\/([\w-]+)$/);
+  if (scheduleMatch) return { type: 'schedule', token: scheduleMatch[1] };
+  const trackingMatch = path.match(/^\/track\/([\w-]+)$/);
+  if (trackingMatch) return { type: 'track', token: trackingMatch[1] };
+  if (path === '/login') return { type: 'auth' };
+  if (path === '/register') return { type: 'home' };
+  if (path === '/account') return { type: 'account' };
+  if (path === '/') return { type: 'home' };
   return { type: 'redirect' };
 }
 
@@ -62,7 +66,13 @@ export default function App() {
 
     getMe(token)
       .then(({ user }) => {
-        if (active) setSession({ loading: false, token, user });
+        if (!active) return;
+        if (user.role === 'customer') {
+          window.localStorage.removeItem(TOKEN_KEY);
+          setSession({ loading: false, token: null, user: null });
+        } else {
+          setSession({ loading: false, token, user });
+        }
       })
       .catch((error) => {
         if (!active) return;
@@ -81,6 +91,12 @@ export default function App() {
   }, [restoreAttempt]);
 
   const handleAuthenticated = useCallback(({ token, user }) => {
+    if (user.role === 'customer') {
+      window.localStorage.removeItem(TOKEN_KEY);
+      setSession({ loading: false, token: null, user: null });
+      navigate('/');
+      return;
+    }
     window.localStorage.setItem(TOKEN_KEY, token);
     setSession({ loading: false, token, user });
     navigate('/account');
@@ -95,6 +111,20 @@ export default function App() {
 
   if (route.type === 'delivery') {
     return <DeliveryPage key={route.token} deliveryToken={route.token} />;
+  }
+
+  if (route.type === 'schedule') {
+    return <SchedulePage key={route.token} trackingToken={route.token} onNavigate={navigate} />;
+  }
+
+  if (route.type === 'track') {
+    return (
+      <TrackingPage
+        key={route.token}
+        trackingToken={route.token}
+        onNavigate={navigate}
+      />
+    );
   }
 
   if (route.type === 'home') {
@@ -129,10 +159,7 @@ export default function App() {
   if (route.type === 'auth' && !session.user) {
     return (
       <AuthPage
-        key={route.mode}
-        mode={route.mode}
         onAuthenticated={handleAuthenticated}
-        onNavigate={navigate}
       />
     );
   }
@@ -140,10 +167,7 @@ export default function App() {
   if (!session.user || !session.token) {
     return (
       <AuthPage
-        key="login"
-        mode="login"
         onAuthenticated={handleAuthenticated}
-        onNavigate={navigate}
       />
     );
   }
@@ -156,6 +180,10 @@ export default function App() {
         onLogout={handleLogout}
       />
     );
+  }
+
+  if (session.user.role === 'customer') {
+    return <LandingPage onNavigate={navigate} />;
   }
 
   return (

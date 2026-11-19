@@ -55,6 +55,7 @@ const createDeliverySchema = z
   .object({
     platform,
     orderId: z.string().trim().min(1).max(80),
+    customerName: z.string().trim().min(2).max(80).optional(),
     address: z.string().trim().min(1).max(500),
     customerId: objectId.optional(),
     assignedAgentId: objectId.optional(),
@@ -62,6 +63,14 @@ const createDeliverySchema = z
     slots: z.array(slotSchema).min(1).max(30),
   })
   .superRefine((delivery, context) => {
+    if (!delivery.customerId && !delivery.customerName) {
+      context.addIssue({
+        code: 'custom',
+        path: ['customerName'],
+        message: 'Customer name is required when no customer account is linked',
+      });
+    }
+
     const seen = new Set();
     delivery.slots.forEach((slot, index) => {
       const key = `${slot.date}:${slot.start}:${slot.end}`;
@@ -80,6 +89,12 @@ const bookSlotSchema = z.object({
   slotId: objectId,
 });
 
+const deliveryLookupSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  platform,
+  orderId: z.string().trim().min(1).max(80),
+});
+
 const deliveryStatusSchema = z.object({
   status: z.enum(['scheduled', 'out-for-delivery', 'delivered']),
 });
@@ -91,5 +106,6 @@ module.exports = {
   agentSchema,
   createDeliverySchema,
   bookSlotSchema,
+  deliveryLookupSchema,
   deliveryStatusSchema,
 };

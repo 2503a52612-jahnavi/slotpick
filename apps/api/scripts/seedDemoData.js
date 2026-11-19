@@ -25,6 +25,12 @@ const SLOT_TIMES = [
   ['14:00', '16:00'],
 ];
 
+function demoOrdersFilter() {
+  return {
+    $or: DEMO_ORDERS.map(({ platform, orderId }) => ({ platform, orderId })),
+  };
+}
+
 function demoDate() {
   const date = new Date();
   date.setUTCDate(date.getUTCDate() + 7);
@@ -56,19 +62,13 @@ async function ensureDemoUser({ email, password, name, role }) {
 async function ensureDemoSlots(date) {
   const slots = [];
   for (const [start, end] of SLOT_TIMES) {
-    let slot = await DeliverySlot.findOneAndUpdate(
+    const slot = await DeliverySlot.findOneAndUpdate(
       { date, start, end },
       {
         $setOnInsert: { capacity: 5, bookedCount: 0, active: true },
       },
       { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
     );
-
-    if (!slot.active || slot.bookedCount >= slot.capacity) {
-      slot.active = true;
-      slot.capacity = Math.max(slot.capacity, slot.bookedCount + 5);
-      await slot.save();
-    }
     slots.push(slot);
   }
   return slots;
@@ -99,6 +99,9 @@ async function seedDemoData() {
     name: 'Demo Delivery Agent',
     role: 'agent',
   });
+  const previousDemoDeliveries = await Delivery.find(demoOrdersFilter())
+    .select('slots')
+    .lean();
   const slots = await ensureDemoSlots(demoDate());
   const selectionExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
@@ -112,20 +115,50 @@ async function seedDemoData() {
           assignedAgent: agent._id,
           selectionExpiresAt,
           slots: slots.map((slot) => slot._id),
+          status: 'pending',
         },
+        $unset: { selectedSlotId: 1 },
         $setOnInsert: {
           deliveryTokenHash: crypto.createHash('sha256')
             .update(crypto.randomBytes(32))
             .digest('hex'),
-          status: 'pending',
         },
       },
       { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
     );
   }
 
+  const currentDemoDeliveries = await Delivery.find(demoOrdersFilter())
+    .select('slots')
+    .lean();
+  const slotIds = new Map(
+    [...previousDemoDeliveries, ...currentDemoDeliveries]
+      .flatMap((delivery) => delivery.slots)
+      .map((slotId) => [String(slotId), slotId])
+  );
+  const nonDemoFilters = DEMO_ORDERS.map(({ platform, orderId }) => ({ platform, orderId }));
+  for (const slotId of slotIds.values()) {
+    const bookedCount = await Delivery.countDocuments({
+      selectedSlotId: slotId,
+      $nor: nonDemoFilters,
+    });
+    const nonDemoDeliveryCount = await Delivery.countDocuments({
+      $or: [{ slots: slotId }, { selectedSlotId: slotId }],
+      $nor: nonDemoFilters,
+    });
+    const slotUpdate = { bookedCount };
+    if (nonDemoDeliveryCount === 0) {
+      const demoSlot = await DeliverySlot.findById(slotId).select('capacity');
+      if (demoSlot) {
+        slotUpdate.active = true;
+        slotUpdate.capacity = Math.max(demoSlot.capacity, 5);
+      }
+    }
+    await DeliverySlot.updateOne({ _id: slotId }, { $set: slotUpdate });
+  }
+
   console.log(
-    `Demo orders ${DEMO_ORDERS.map(({ orderId }) => orderId).join(', ')} are ready for ` +
+    `Demo orders ${DEMO_ORDERS.map(({ orderId }) => orderId).join(', ')} were reset for ` +
     `${customer.email}; ${slots.length} slots each; assigned agent ${agent.email}; ` +
     `database ${mongoose.connection.name}`
   );

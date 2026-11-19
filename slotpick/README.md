@@ -56,13 +56,16 @@ directory. The configured admin is created on first startup and is not reset
 on later starts.
 
 To seed development data, run `npm run seed-demo` from `apps/api`. This creates
-or reuses the demo customer and agent, creates five lookup orders
+or reuses the demo customer and agent, creates five demo deliveries
 (`Amazon/ID_101`, `Flipkart/ID_102`, `Myntra/ID_103`, `Ajio/ID_104`, and
 `Meesho/ID_105`), and attaches three available delivery slots to each order.
 The seed is repeatable and refuses to run when `NODE_ENV=production`. Each run
-sets the passwords for these dedicated demo accounts; use a different email
-with the corresponding environment variable if that account already belongs
-to someone else.
+resets those five orders to `pending`, clears their selected slots, and gives
+them a fresh 24-hour selection window. Demo-only slot counts are reset; shared
+slots retain counts for non-demo bookings, and non-demo deliveries are not
+modified. Each run also sets the passwords for these dedicated demo accounts;
+use a different email with the corresponding environment variable if that
+account already belongs to someone else.
 
 Default development sign-in credentials:
 

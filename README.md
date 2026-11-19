@@ -104,7 +104,7 @@ GET /api/admin/ping
 POST /api/admin/agents
 POST /api/admin/deliveries
 
-### Development order lookup data
+### Development demo delivery data
 
 From `apps/api`, configure `MONGODB_URI` in `.env`, then seed or reseed the
 demo records with:
@@ -123,6 +123,10 @@ It creates five orders, each with three delivery slots:
 | Myntra | `ID_103` |
 | Ajio | `ID_104` |
 | Meesho | `ID_105` |
+
+Rerunning the seed resets these orders to `pending`, clears their selected
+slots, and refreshes the 24-hour selection window. It resets demo-only slot
+counts while preserving non-demo reservations on shared slots.
 
 Test sign-in credentials for the seeded customer and agent:
 

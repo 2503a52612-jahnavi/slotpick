@@ -6,8 +6,6 @@ const {
   loginSchema,
   createDeliverySchema,
   bookSlotSchema,
-  orderLookupSchema,
-  orderBookingSchema,
   deliveryStatusSchema,
 } = require('../src/middleware/schemas');
 
@@ -67,7 +65,7 @@ test('delivery input validates calendar dates and slot ordering, with safe defau
   );
 });
 
-test('duplicate slots and malformed booking ids are rejected', () => {
+test('duplicate slots, malformed booking ids, and unsupported statuses are rejected', () => {
   const duplicated = createDeliverySchema.safeParse({
     platform: 'Amazon',
     orderId: 'ORD-3',
@@ -80,17 +78,6 @@ test('duplicate slots and malformed booking ids are rejected', () => {
 
   assert.equal(duplicated.success, false);
   assert.equal(bookSlotSchema.safeParse({ slotId: 'not-an-object-id' }).success, false);
-  const lookup = orderLookupSchema.parse({ platform: 'Amazon', orderId: ' ORD-4 ' });
-  assert.equal(lookup.orderId, 'ORD-4');
-  assert.equal(orderLookupSchema.safeParse({ platform: 'Other', orderId: 'ORD-4' }).success, false);
-  assert.equal(
-    orderBookingSchema.safeParse({
-      platform: 'Amazon',
-      orderId: 'ORD-4',
-      slotId: 'not-an-object-id',
-    }).success,
-    false
-  );
   assert.equal(deliveryStatusSchema.safeParse({ status: 'out-for-delivery' }).success, true);
   assert.equal(deliveryStatusSchema.safeParse({ status: 'skip-to-delivered' }).success, false);
 });

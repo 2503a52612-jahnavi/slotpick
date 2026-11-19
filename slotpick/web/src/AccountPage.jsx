@@ -40,6 +40,9 @@ export default function AccountPage({ user, token, onLogout, onAuthenticated }) 
   const [adminMessage, setAdminMessage] = useState('');
   const [bookingId, setBookingId] = useState(null);
   const [bookingErrors, setBookingErrors] = useState({});
+  const [slotPickerId, setSlotPickerId] = useState(null);
+  const [activeDay, setActiveDay] = useState(null);
+  const [selectedSlotId, setSelectedSlotId] = useState(null);
   const [refreshError, setRefreshError] = useState('');
   const [retryCount, setRetryCount] = useState(0);
   const [passwordBusy, setPasswordBusy] = useState(false);
@@ -99,6 +102,8 @@ export default function AccountPage({ user, token, onLogout, onAuthenticated }) 
       await bookCustomerSlot(token, delivery._id, slot._id);
       const result = await getCustomerDeliveries(token);
       setDeliveries(result.deliveries);
+      setSlotPickerId(null);
+      setSelectedSlotId(null);
     } catch (requestError) {
       if (requestError.status === 401) {
         onLogout();
@@ -113,6 +118,7 @@ export default function AccountPage({ user, token, onLogout, onAuthenticated }) 
       setBookingErrors((current) => ({ ...current, [delivery._id]: message }));
 
       if (requestError.status === 409) {
+        setSelectedSlotId(null);
         try {
           const result = await getCustomerDeliveries(token);
           setDeliveries(result.deliveries);
@@ -191,7 +197,7 @@ export default function AccountPage({ user, token, onLogout, onAuthenticated }) 
       {!loading && !error && user.role === 'admin' && <p>{adminMessage}</p>}
       {!loading && !error && user.role !== 'admin' && (
         <section>
-          <h2>{user.role === 'agent' ? 'Assigned deliveries' : 'Delivery history'}</h2>
+          <h2>{user.role === 'agent' ? 'Assigned deliveries' : 'My deliveries'}</h2>
           {user.role === 'customer' && (
             <p className="muted">Delivery statuses refresh automatically every 15 seconds.</p>
           )}
@@ -209,6 +215,10 @@ export default function AccountPage({ user, token, onLogout, onAuthenticated }) 
                 const selectionOpen =
                   status === 'pending' &&
                   new Date(delivery.selectionExpiresAt).getTime() > Date.now();
+                const days = [...new Set((delivery.slots || []).map((slot) => slot.date))];
+                const selectedSlot = (delivery.slots || []).find(
+                  (slot) => String(slot._id) === selectedSlotId
+                );
 
                 return (
                   <li key={delivery._id}>
@@ -218,6 +228,9 @@ export default function AccountPage({ user, token, onLogout, onAuthenticated }) 
                         {statusLabel(status)}
                       </span>
                     </div>
+                    {user.role === 'customer' && (
+                      <span><strong>Platform:</strong> {delivery.platform}</span>
+                    )}
                     <span>{delivery.address}</span>
                     {delivery.selectedSlotId && (
                       <span>
@@ -227,29 +240,79 @@ export default function AccountPage({ user, token, onLogout, onAuthenticated }) 
 
                     {user.role === 'customer' && status === 'pending' && (
                       <div className="available-slots">
-                        <strong>Available delivery slots</strong>
                         {bookingErrors[delivery._id] && (
                           <p className="msg" role="alert">{bookingErrors[delivery._id]}</p>
                         )}
-                        {!selectionOpen ? (
-                          <p className="muted">The slot selection window has expired.</p>
-                        ) : slots.length === 0 ? (
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          disabled={!selectionOpen || slots.length === 0 || bookingId !== null}
+                          aria-expanded={slotPickerId === delivery._id}
+                          onClick={() => {
+                            if (slotPickerId === delivery._id) {
+                              setSlotPickerId(null);
+                              setSelectedSlotId(null);
+                            } else {
+                              setSlotPickerId(delivery._id);
+                              setSelectedSlotId(null);
+                              setActiveDay(slots[0]?.date || days[0] || null);
+                            }
+                          }}
+                        >
+                          Choose a slot
+                        </button>
+                        {!selectionOpen && <p className="muted">The slot selection window has expired.</p>}
+                        {selectionOpen && slots.length === 0 && (
                           <p className="muted">No delivery slots are currently available.</p>
-                        ) : (
-                          <div className="delivery-slot-list">
-                            {slots.map((slot) => (
-                              <button
-                                key={slot._id}
-                                className="day"
-                                type="button"
-                                disabled={bookingId !== null}
-                                onClick={() => selectSlot(delivery, slot)}
-                              >
-                                {bookingId === delivery._id
-                                  ? 'Booking…'
-                                  : `${formatDay(slot.date)} · ${slot.start}–${slot.end}`}
-                              </button>
-                            ))}
+                        )}
+                        {slotPickerId === delivery._id && selectionOpen && (
+                          <div>
+                            <strong>Choose a delivery time</strong>
+                            <div className="days" role="tablist" aria-label="Delivery dates">
+                              {days.map((day) => (
+                                <button
+                                  key={day}
+                                  type="button"
+                                  role="tab"
+                                  aria-selected={day === activeDay}
+                                  className={day === activeDay ? 'day on' : 'day'}
+                                  onClick={() => setActiveDay(day)}
+                                >
+                                  {formatDay(day)}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="delivery-slot-list">
+                              {(delivery.slots || [])
+                                .filter((slot) => slot.date === activeDay)
+                                .map((slot) => {
+                                  const available = slot.active && slot.bookedCount < slot.capacity;
+                                  return (
+                                    <button
+                                      key={slot._id}
+                                      className={selectedSlotId === slot._id ? 'day on' : 'day'}
+                                      type="button"
+                                      disabled={!available || bookingId !== null}
+                                      aria-pressed={selectedSlotId === slot._id}
+                                      onClick={() => setSelectedSlotId(slot._id)}
+                                    >
+                                      {slot.start}–{slot.end}{!available && ' · Full'}
+                                    </button>
+                                  );
+                                })}
+                            </div>
+                            <button
+                              className="confirm"
+                              type="button"
+                              disabled={!selectedSlot || bookingId === delivery._id}
+                              onClick={() => selectSlot(delivery, selectedSlot)}
+                            >
+                              {bookingId === delivery._id
+                                ? 'Booking…'
+                                : selectedSlot
+                                  ? `Book ${selectedSlot.start}–${selectedSlot.end}`
+                                  : 'Select a time'}
+                            </button>
                           </div>
                         )}
                       </div>
